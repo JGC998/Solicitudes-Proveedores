@@ -3,7 +3,7 @@
     "id": 1,
     "nombre": "Empresa Ejemplo SA",
     "email": "admin@empresa.com",
-    "password": "admin123",
+    "password": "$2b$10$05B3KoB5IKa4dMSJdKyCpuwLdoYoGRyk8RxrVCwHKLiE4SuiHTxum",
     "rol": "admin",
     "activo": true
   },
@@ -11,7 +11,7 @@
     "id": 2,
     "nombre": "Suministros García SL",
     "email": "garcia@suministros.com",
-    "password": "garcia123",
+    "password": "$2b$10$qfHmS08uZWmnkEauOBdi1OQtJhUpUOPoHKdW43t7JX2WMxhVpDw2G",
     "rol": "proveedor",
     "activo": true
   },
@@ -19,7 +19,7 @@
     "id": 3,
     "nombre": "Distribuciones Martínez",
     "email": "martinez@dist.com",
-    "password": "martinez123",
+    "password": "$2b$10$aAPzBNqyeNhDEoxNgDNCtOQKJtdUgDuFlUMbNArREddHoLrzBTpoO",
     "rol": "proveedor",
     "activo": true
   },
@@ -27,7 +27,7 @@
     "id": 4,
     "nombre": "Componentes López SA",
     "email": "lopez@componentes.com",
-    "password": "lopez123",
+    "password": "$2b$10$IyaWgkt2p3x14LzuNPibjOUiZyoz3UzcjJbAN45wrVDQFSeIbdcJC",
     "rol": "proveedor",
     "activo": true
   },
@@ -35,7 +35,7 @@
     "id": 5,
     "nombre": "Industriales Fernández",
     "email": "fernandez@industrial.com",
-    "password": "fernandez123",
+    "password": "$2b$10$I371/ZQD3Li5SQcn90FGou8ODgTtOPZbDH8iyubSRJ5yFPU5u5b/a",
     "rol": "proveedor",
     "activo": true
   },
@@ -43,7 +43,7 @@
     "id": 6,
     "nombre": "prueba",
     "email": "prueba@prueba.com",
-    "password": "123456",
+    "password": "$2b$10$Wdui/lZnOAwisFUaDNS1E.0tGbwun0L9RPVjCMmLkGWxuRITghhQi",
     "rol": "proveedor",
     "activo": true,
     "pendiente": false

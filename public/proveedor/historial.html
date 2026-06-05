@@ -175,8 +175,8 @@ function renderCotizacion(c) {
   const lineasHTML = c.lineas.map(l => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)">
       <div>
-        <span class="text-sm fw-bold">${l.producto?.nombre || 'Producto'}</span>
-        <span class="text-muted text-sm" style="margin-left:.4rem">${l.producto?.unidad || ''}</span>
+        <span class="text-sm fw-bold">${escapeHtml(l.producto?.nombre || 'Producto')}</span>
+        <span class="text-muted text-sm" style="margin-left:.4rem">${escapeHtml(l.producto?.unidad || '')}</span>
       </div>
       <div style="text-align:right">
         <span class="fw-bold">${l.precio_unitario.toFixed(2)} €/u</span>
@@ -192,7 +192,7 @@ function renderCotizacion(c) {
       <div class="card-header">
         <div>
           <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-            <span class="card-title">${c.solicitud?.titulo || 'Solicitud eliminada'}</span>
+            <span class="card-title">${escapeHtml(c.solicitud?.titulo || 'Solicitud eliminada')}</span>
             <span class="badge ${badgeMap[estadoSolicitud] || 'badge-gray'}">${estadoSolicitud}</span>
             ${c.adjudicada === true ? '<span class="badge badge-success">👑 Adjudicada</span>' : ''}
             ${c.adjudicada === false ? '<span class="badge badge-danger">No seleccionada</span>' : ''}
@@ -208,7 +208,7 @@ function renderCotizacion(c) {
       </div>
       <div class="card-body" style="padding-top:.6rem;padding-bottom:.6rem">
         ${lineasHTML}
-        ${c.notas ? `<p class="text-muted text-sm mt-1"><em>Notas: ${c.notas}</em></p>` : ''}
+        ${c.notas ? `<p class="text-muted text-sm mt-1"><em>Notas: ${escapeHtml(c.notas)}</em></p>` : ''}
       </div>
     </div>
   `;

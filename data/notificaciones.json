@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "id": 6,
+    "user_id": 5,
+    "tipo": "no_adjudicado",
+    "mensaje": "Tu cotización para \"Material de oficina\" no fue seleccionada esta vez",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:56:35.439Z",
+    "leida": true
+  },
+  {
+    "id": 5,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Industriales Fernández ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:55:10.121Z",
+    "leida": true
+  },
+  {
+    "id": 4,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Componentes López SA ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:54:31.508Z",
+    "leida": true
+  },
+  {
+    "id": 3,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Distribuciones Martínez ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:53:36.348Z",
+    "leida": true
+  },
+  {
+    "id": 2,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Suministros García SL ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:52:38.874Z",
+    "leida": true
+  },
+  {
+    "id": 1,
+    "user_id": 6,
+    "tipo": "nueva_solicitud",
+    "mensaje": "Nueva solicitud: \"Material de oficina\"",
+    "referencia_id": 1,
+    "fecha": "2026-06-05T08:50:56.354Z",
+    "leida": false
+  }
+]

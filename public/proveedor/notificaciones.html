@@ -66,25 +66,25 @@ const TIPO_ICONS = {
   no_adjudicado: '❌', cuenta_aprobada: '✅', otros: '🔔'
 };
 
+let rolActual = 'proveedor';
+
 async function init() {
-  let rol = 'admin';
   try {
     const me = await fetch('/api/auth/me');
     if (!me.ok) return (window.location.href = '/login.html');
     const { user } = await me.json();
-    rol = user.rol;
+    rolActual = user.rol;
     document.getElementById('user-name').textContent = user.nombre;
     document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
-    document.getElementById('user-role').textContent = rol === 'admin' ? 'Administrador' : 'Proveedor';
-    if (rol !== 'admin') {
-      // Cambiar sidebar para proveedor
+    document.getElementById('user-role').textContent = rolActual === 'admin' ? 'Administrador' : 'Proveedor';
+    if (rolActual !== 'admin') {
       document.querySelector('.sidebar-nav').innerHTML = `
         <p class="sidebar-section-label">Proveedor</p>
         <a href="/proveedor/dashboard.html" class="nav-item"><span class="nav-icon">⊞</span> Mi panel</a>
         <a href="/proveedor/historial.html" class="nav-item"><span class="nav-icon">📋</span> Mis cotizaciones</a>
       `;
     }
-    initHeader(rol);
+    initHeader(rolActual);
   } catch { return (window.location.href = '/login.html'); }
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -113,14 +113,17 @@ async function cargar() {
       const icon = TIPO_ICONS[n.tipo] || TIPO_ICONS.otros;
       const fecha = new Date(n.fecha);
       const fechaStr = fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-      const link = n.referencia_id ? `<a href="/admin/detalle.html?id=${n.referencia_id}" class="btn btn-secondary btn-sm" style="margin-top:.5rem">Ver solicitud →</a>` : '';
+      const href = n.referencia_id
+        ? (rolActual === 'admin' ? `/admin/detalle.html?id=${n.referencia_id}` : `/proveedor/cotizar.html?id=${n.referencia_id}`)
+        : null;
+      const link = href ? `<a href="${href}" class="btn btn-secondary btn-sm" style="margin-top:.5rem">Ver solicitud →</a>` : '';
       return `
         <div class="card mb-2" style="${!n.leida ? 'border-left:4px solid var(--primary)' : 'opacity:.75'}">
           <div class="card-body" style="padding:.9rem 1.2rem">
             <div style="display:flex;align-items:flex-start;gap:.8rem">
               <span style="font-size:1.3rem;line-height:1">${icon}</span>
               <div style="flex:1">
-                <p style="margin:0;font-size:.9rem;${!n.leida?'font-weight:600':''}">${n.mensaje}</p>
+                <p style="margin:0;font-size:.9rem;${!n.leida?'font-weight:600':''}">${escapeHtml(n.mensaje)}</p>
                 <p class="text-muted text-sm mt-1">${fechaStr}</p>
                 ${link}
               </div>

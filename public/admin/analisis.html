@@ -35,9 +35,9 @@
         <span class="nav-icon">📦</span> Catálogo
       </a>
       <a href="/admin/proveedores.html" class="nav-item">
-      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
         <span class="nav-icon">👥</span> Proveedores
       </a>
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -256,15 +256,21 @@ function renderKpis(k) {
 }
 
 // ── Filtros (T-08) ────────────────────────────────────────────────────────────
+function toggleFiltroEl(el) {
+  const nombre = el.dataset.nombre;
+  if (el.dataset.tipo === 'proveedor') toggleProvFiltro(nombre, el.checked);
+  else toggleProdFiltro(nombre, el.checked);
+}
+
 function renderFiltros() {
   const fpEl = document.getElementById('filtro-proveedores');
   fpEl.innerHTML = rawData.comparativaProveedores.map((p, i) => `
     <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;padding:.3rem .6rem;background:${PALETTE[i%PALETTE.length]}22;border-radius:999px;border:2px solid ${filtrosProveedores.has(p.nombre) ? PALETTE[i%PALETTE.length] : 'transparent'}">
       <input type="checkbox" ${filtrosProveedores.has(p.nombre) ? 'checked' : ''}
-        data-nombre="${p.nombre}"
+        data-tipo="proveedor" data-nombre="${escapeHtml(p.nombre)}"
         style="accent-color:${PALETTE[i%PALETTE.length]}"
-        onchange="toggleProvFiltro('${p.nombre}', this.checked)">
-      <span style="font-size:.8rem;font-weight:600;color:${PALETTE[i%PALETTE.length]}">${p.nombre}</span>
+        onchange="toggleFiltroEl(this)">
+      <span style="font-size:.8rem;font-weight:600;color:${PALETTE[i%PALETTE.length]}">${escapeHtml(p.nombre)}</span>
     </label>
   `).join('');
 
@@ -272,10 +278,10 @@ function renderFiltros() {
   fprEl.innerHTML = rawData.productosConDatos.map(nombre => `
     <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;padding:.3rem .6rem;background:var(--primary-light);border-radius:999px;border:2px solid ${filtrosProductos.has(nombre) ? 'var(--primary)' : 'transparent'}">
       <input type="checkbox" ${filtrosProductos.has(nombre) ? 'checked' : ''}
-        data-nombre="${nombre}"
+        data-tipo="producto" data-nombre="${escapeHtml(nombre)}"
         style="accent-color:var(--primary)"
-        onchange="toggleProdFiltro('${nombre}', this.checked)">
-      <span style="font-size:.8rem;font-weight:600;color:var(--primary)">${nombre}</span>
+        onchange="toggleFiltroEl(this)">
+      <span style="font-size:.8rem;font-weight:600;color:var(--primary)">${escapeHtml(nombre)}</span>
     </label>
   `).join('');
 }

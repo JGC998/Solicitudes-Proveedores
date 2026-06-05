@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const bcrypt = require('bcryptjs');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -7,11 +8,19 @@ const app = express();
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 
+// ─── SSE: clientes conectados ──────────────────────────────────────────────────
+const sseClients = new Set();
+
+function broadcast(tipo, datos = {}) {
+  const msg = `data: ${JSON.stringify({ tipo, ...datos })}\n\n`;
+  sseClients.forEach(c => { try { c.res.write(msg); } catch {} });
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
-  secret: 'rfq-proto-secret-2025',
+  secret: process.env.SESSION_SECRET || 'rfq-proto-secret-2025',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 8 * 60 * 60 * 1000 }
@@ -71,12 +80,12 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const users = await readData('users.json');
-    const user = users.find(u => u.email === email && u.password === password && u.activo !== false && !u.pendiente);
-    if (!user) {
-      const pendiente = users.find(u => u.email === email && u.pendiente);
-      if (pendiente) return res.status(401).json({ error: 'Tu cuenta está pendiente de aprobación por el administrador.' });
+    const pendiente = users.find(u => u.email === email && u.pendiente);
+    if (pendiente) return res.status(401).json({ error: 'Tu cuenta está pendiente de aprobación por el administrador.' });
+    const candidate = users.find(u => u.email === email && u.activo !== false && !u.pendiente);
+    if (!candidate || !(await bcrypt.compare(password, candidate.password)))
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-    }
+    const user = candidate;
     req.session.user = { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol };
     res.json({ user: req.session.user });
   } catch (e) {
@@ -102,7 +111,7 @@ app.post('/api/auth/registro', async (req, res) => {
     const users = await readData('users.json');
     if (users.find(u => u.email === email))
       return res.status(400).json({ error: 'Ya existe una cuenta con ese email' });
-    const nuevo = { id: nextId(users), nombre, email, password, rol: 'proveedor', activo: false, pendiente: true };
+    const nuevo = { id: nextId(users), nombre, email, password: await bcrypt.hash(password, 10), rol: 'proveedor', activo: false, pendiente: true };
     users.push(nuevo);
     await writeData('users.json', users);
     res.status(201).json({ ok: true });
@@ -222,13 +231,17 @@ app.get('/api/solicitudes/:id', requireAuth, async (req, res) => {
         proveedor: users.find(u => u.id === c.proveedor_id) || null
       }));
 
+    const cotsParaRespuesta = req.session.user.rol === 'admin'
+      ? cotsForThis
+      : cotsForThis.filter(c => c.proveedor_id === req.session.user.id);
+
     res.json({
       ...solicitud,
       productos: solicitud.productos.map(p => ({
         ...p,
         producto: productos.find(pr => pr.id === p.producto_id) || null
       })),
-      cotizaciones: cotsForThis
+      cotizaciones: cotsParaRespuesta
     });
   } catch (e) {
     res.status(500).json({ error: 'Error al leer solicitud' });
@@ -268,6 +281,7 @@ app.post('/api/solicitudes', requireAdmin, async (req, res) => {
       crearNotificacion(p.id, 'nueva_solicitud', `Nueva solicitud: "${nueva.titulo}"`, nueva.id)
     ));
 
+    broadcast('nueva_solicitud', { solicitud_id: nueva.id, titulo: nueva.titulo });
     res.status(201).json(nueva);
   } catch (e) {
     res.status(500).json({ error: 'Error al crear solicitud' });
@@ -279,8 +293,12 @@ app.patch('/api/solicitudes/:id/estado', requireAdmin, async (req, res) => {
     const solicitudes = await readData('solicitudes.json');
     const idx = solicitudes.findIndex(s => s.id === parseInt(req.params.id));
     if (idx === -1) return res.status(404).json({ error: 'No encontrada' });
+    const ESTADOS_VALIDOS = ['activa', 'cerrada', 'borrador'];
+    if (!ESTADOS_VALIDOS.includes(req.body.estado))
+      return res.status(400).json({ error: 'Estado no válido' });
     solicitudes[idx].estado = req.body.estado;
     await writeData('solicitudes.json', solicitudes);
+    broadcast('solicitud_estado', { solicitud_id: solicitudes[idx].id, estado: req.body.estado });
     res.json(solicitudes[idx]);
   } catch (e) {
     res.status(500).json({ error: 'Error al actualizar estado' });
@@ -355,6 +373,7 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
       existente.notas = notas || '';
       existente.fecha = new Date().toISOString().split('T')[0];
       await writeData('cotizaciones.json', cotizaciones);
+      broadcast('cotizacion_actualizada', { solicitud_id, proveedor: req.session.user.nombre });
       return res.json(existente);
     }
 
@@ -383,6 +402,7 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
         `${req.session.user.nombre} ha enviado cotización para "${solData?.titulo}"`, solicitud_id)
     ));
 
+    broadcast('nueva_cotizacion', { solicitud_id, proveedor: req.session.user.nombre, titulo: solData?.titulo });
     res.status(201).json(nueva);
   } catch (e) {
     res.status(500).json({ error: 'Error al guardar cotización' });
@@ -393,8 +413,7 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
 app.get('/api/proveedores', requireAdmin, async (req, res) => {
   try {
     const users = await readData('users.json');
-    // Include password for admin panel (prototype — permite ver/gestionar credenciales)
-    res.json(users.filter(u => u.rol === 'proveedor'));
+    res.json(users.filter(u => u.rol === 'proveedor').map(({ password, ...rest }) => rest));
   } catch (e) {
     res.status(500).json({ error: 'Error al leer proveedores' });
   }
@@ -408,7 +427,7 @@ app.post('/api/proveedores', requireAdmin, async (req, res) => {
     const users = await readData('users.json');
     if (users.find(u => u.email === email))
       return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
-    const nuevo = { id: nextId(users), nombre, email, password, rol: 'proveedor', activo: true };
+    const nuevo = { id: nextId(users), nombre, email, password: await bcrypt.hash(password, 10), rol: 'proveedor', activo: true };
     users.push(nuevo);
     await writeData('users.json', users);
     const { password: _, ...safe } = nuevo;
@@ -428,6 +447,7 @@ app.patch('/api/proveedores/:id', requireAdmin, async (req, res) => {
         return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
     }
     const { id, rol, ...changes } = req.body;
+    if (changes.password) changes.password = await bcrypt.hash(changes.password, 10);
     users[idx] = { ...users[idx], ...changes };
     await writeData('users.json', users);
     const { password, ...safe } = users[idx];
@@ -489,6 +509,7 @@ app.patch('/api/cotizaciones/:id/adjudicar', requireAdmin, async (req, res) => {
       `Pedido adjudicado a "${ganador?.nombre}" para "${solData2?.titulo}"`, cot.solicitud_id, 'solicitud');
 
     // Notificar a todos los que cotizaron
+    broadcast('adjudicacion', { solicitud_id: cot.solicitud_id });
     cotizaciones.filter(c => c.solicitud_id === cot.solicitud_id).forEach(c => {
       const msg = c.id === cot.id
         ? `✅ Tu cotización para "${solData2?.titulo}" ha sido seleccionada`
@@ -858,10 +879,10 @@ app.patch('/api/auth/password', requireAuth, async (req, res) => {
     const users = await readData('users.json');
     const idx = users.findIndex(u => u.id === req.session.user.id);
     if (idx === -1) return res.status(404).json({ error: 'Usuario no encontrado' });
-    if (users[idx].password !== current_password)
+    if (!(await bcrypt.compare(current_password, users[idx].password)))
       return res.status(401).json({ error: 'La contraseña actual no es correcta' });
 
-    users[idx].password = new_password;
+    users[idx].password = await bcrypt.hash(new_password, 10);
     await writeData('users.json', users);
     res.json({ ok: true });
   } catch (e) {
@@ -869,12 +890,46 @@ app.patch('/api/auth/password', requireAuth, async (req, res) => {
   }
 });
 
+// ─── SSE endpoint ─────────────────────────────────────────────────────────────
+app.get('/api/eventos', requireAuth, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const client = { id: req.session.user.id, rol: req.session.user.rol, res };
+  sseClients.add(client);
+  res.write('data: {"tipo":"ping"}\n\n');
+
+  req.on('close', () => sseClients.delete(client));
+});
+
 // ─── Root redirect ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.redirect('/login.html'));
 
-app.listen(PORT, () => {
-  console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
-  console.log('   Credenciales demo:');
-  console.log('   Admin     → admin@empresa.com / admin123');
-  console.log('   Proveedor → garcia@suministros.com / garcia123\n');
+// ─── Migración automática de contraseñas a bcrypt ─────────────────────────────
+async function migrarPasswordsSiNecesario() {
+  try {
+    const users = await readData('users.json');
+    let migrado = false;
+    for (const u of users) {
+      if (u.password && !u.password.startsWith('$2')) {
+        u.password = await bcrypt.hash(u.password, 10);
+        migrado = true;
+      }
+    }
+    if (migrado) {
+      await writeData('users.json', users);
+      console.log('  ✓ Contraseñas migradas a bcrypt');
+    }
+  } catch (e) { console.error('Error en migración de contraseñas:', e); }
+}
+
+migrarPasswordsSiNecesario().then(() => {
+  app.listen(PORT, () => {
+    console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
+    console.log('   Credenciales demo:');
+    console.log('   Admin     → admin@empresa.com / admin123');
+    console.log('   Proveedor → garcia@suministros.com / garcia123\n');
+  });
 });

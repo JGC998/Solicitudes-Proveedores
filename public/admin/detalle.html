@@ -195,7 +195,7 @@ async function cargar() {
 function render() {
   const { solicitud, proveedores, comparacion, invitados } = pageData;
 
-  document.getElementById('page-title').textContent = solicitud.titulo;
+  document.getElementById('page-title').textContent = solicitud.titulo;  // textContent escapa automáticamente
   document.getElementById('bc-title').textContent = solicitud.titulo;
   document.getElementById('page-subtitle').textContent = `${proveedores.length} proveedor(es) han respondido`;
 
@@ -246,7 +246,7 @@ function render() {
     document.getElementById('thead-compare').innerHTML = `
       <tr>
         <th>Producto</th><th>Cant.</th><th>Unidad</th>
-        ${proveedores.map(p => `<th style="text-align:center">${p.nombre}${p.adjudicada===true?' 👑':''}</th>`).join('')}
+        ${proveedores.map(p => `<th style="text-align:center">${escapeHtml(p.nombre)}${p.adjudicada===true?' 👑':''}</th>`).join('')}
         <th>Mejor precio</th>
       </tr>
     `;
@@ -274,7 +274,7 @@ function render() {
         const prov = proveedores.find(p => p.id === g?.proveedor_id);
         if (prov) mejor = `<span style="color:var(--success);font-weight:700">${prov.nombre}</span><br><small>${row.precio_min.toFixed(2)} €/u · ${(row.precio_min*row.cantidad).toFixed(2)} € total</small>`;
       }
-      return `<tr><td><strong>${row.nombre}</strong></td><td>${row.cantidad}</td><td class="text-muted text-sm">${row.unidad}</td>${celdas.join('')}<td>${mejor}</td></tr>`;
+      return `<tr><td><strong>${escapeHtml(row.nombre)}</strong></td><td>${row.cantidad}</td><td class="text-muted text-sm">${escapeHtml(row.unidad)}</td>${celdas.join('')}<td>${mejor}</td></tr>`;
     }).join('');
 
     // Fila totales por proveedor
@@ -287,18 +287,19 @@ function render() {
       return `<td style="text-align:center">${hayDatos ? `<strong>${total.toFixed(2)} €</strong>` : '—'}</td>`;
     }).join('');
 
-    const totalMinimo = Math.min(...proveedores.map(prov =>
+    const totalesValidos = proveedores.map(prov =>
       comparacion.reduce((sum, row) => {
         const e = row.precios.find(x => x.proveedor_id === prov.id);
         return sum + (e?.precio ? e.precio * row.cantidad : 0);
       }, 0)
-    ).filter(t => t > 0));
+    ).filter(t => t > 0);
+    const totalMinimo = totalesValidos.length > 0 ? Math.min(...totalesValidos) : null;
 
     document.getElementById('tbody-compare').innerHTML = filas + `
       <tr class="total-row">
         <td colspan="3"><strong>TOTAL PEDIDO</strong></td>
         ${totalesCeldas}
-        <td><strong style="color:var(--success)">${totalMinimo > 0 ? totalMinimo.toFixed(2) + ' €' : '—'}</strong></td>
+        <td><strong style="color:var(--success)">${totalMinimo !== null ? totalMinimo.toFixed(2) + ' €' : '—'}</strong></td>
       </tr>
     `;
   }
@@ -313,12 +314,12 @@ function render() {
     document.getElementById('notas-content').innerHTML = proveedores.map(p => `
       <div style="padding:.8rem 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-          <strong>${p.nombre}</strong>
-          <span class="text-muted text-sm">${p.fecha}</span>
+          <strong>${escapeHtml(p.nombre)}</strong>
+          <span class="text-muted text-sm">${escapeHtml(p.fecha)}</span>
           ${p.adjudicada===true ? '<span class="badge badge-success">👑 Adjudicado</span>' : ''}
           ${p.adjudicada===false ? '<span class="badge badge-danger">No adjudicado</span>' : ''}
         </div>
-        <p class="text-muted text-sm mt-1">${p.notas || 'Sin notas.'}</p>
+        <p class="text-muted text-sm mt-1">${escapeHtml(p.notas || 'Sin notas.')}</p>
       </div>
     `).join('');
   }
@@ -333,10 +334,10 @@ function renderAdjudicacion() {
   if (proveedores.length === 0) { document.getElementById('card-adjudicacion').classList.add('hidden'); return; }
 
   if (ganador) {
-    badgeEl.innerHTML = `<span class="badge badge-success">👑 ${ganador.nombre}</span>`;
+    badgeEl.innerHTML = `<span class="badge badge-success">👑 ${escapeHtml(ganador.nombre)}</span>`;
     let html = `
       <div class="alert alert-success mb-2">
-        <strong>👑 Pedido adjudicado a ${ganador.nombre}</strong>${ganador.notas ? `<br><em>"${ganador.notas}"</em>` : ''}
+        <strong>👑 Pedido adjudicado a ${escapeHtml(ganador.nombre)}</strong>${ganador.notas ? `<br><em>"${escapeHtml(ganador.notas)}"</em>` : ''}
       </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="desadjudicar(${ganador.cotizacion_id})">Quitar adjudicación</button>`;
@@ -344,8 +345,8 @@ function renderAdjudicacion() {
     if (!solicitud.recibida) {
       html += `<button class="btn btn-success btn-sm" onclick="marcarRecibido()">✓ Marcar como recibido y valorar</button>`;
     } else {
-      html += `<span class="badge badge-success" style="padding:.5rem .8rem">✓ Pedido recibido el ${solicitud.fecha_recepcion}</span>`;
-      html += `<button class="btn btn-secondary btn-sm" onclick="abrirModalValoracion(${ganador.id}, '${ganador.nombre}')">⭐ Valorar proveedor</button>`;
+      html += `<span class="badge badge-success" style="padding:.5rem .8rem">✓ Pedido recibido el ${escapeHtml(solicitud.fecha_recepcion)}</span>`;
+      html += `<button class="btn btn-secondary btn-sm" data-prov-id="${ganador.id}" data-nombre="${escapeHtml(ganador.nombre)}" onclick="abrirModalValoracionBtn(this)">⭐ Valorar proveedor</button>`;
     }
     html += `</div>`;
     bodyEl.innerHTML = html;
@@ -354,21 +355,26 @@ function renderAdjudicacion() {
     bodyEl.innerHTML = `
       <p class="text-muted text-sm mb-2">Selecciona el proveedor al que deseas adjudicar este pedido:</p>
       <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-        ${proveedores.map(p => `<button class="btn btn-secondary" onclick="adjudicar(${p.cotizacion_id}, '${p.nombre}')">Adjudicar a <strong style="margin-left:.3rem">${p.nombre}</strong></button>`).join('')}
+        ${proveedores.map(p => `<button class="btn btn-secondary" data-cot-id="${p.cotizacion_id}" data-nombre="${escapeHtml(p.nombre)}" onclick="adjudicarBtn(this)">Adjudicar a <strong style="margin-left:.3rem">${escapeHtml(p.nombre)}</strong></button>`).join('')}
       </div>
     `;
   }
 }
 
+function adjudicarBtn(el) { adjudicar(parseInt(el.dataset.cotId), el.dataset.nombre); }
+function abrirModalValoracionBtn(el) { abrirModalValoracion(parseInt(el.dataset.provId), el.dataset.nombre); }
+
 async function adjudicar(cotId, nombre) {
   if (!confirm(`¿Adjudicar el pedido a ${nombre}?`)) return;
-  await fetch(`/api/cotizaciones/${cotId}/adjudicar`, { method: 'PATCH' });
+  const res = await fetch(`/api/cotizaciones/${cotId}/adjudicar`, { method: 'PATCH' });
+  if (!res.ok) { alert('Error al adjudicar.'); return; }
   await cargar();
 }
 
 async function desadjudicar(cotId) {
   if (!confirm('¿Quitar la adjudicación?')) return;
-  await fetch(`/api/cotizaciones/${cotId}/desadjudicar`, { method: 'PATCH' });
+  const res = await fetch(`/api/cotizaciones/${cotId}/desadjudicar`, { method: 'PATCH' });
+  if (!res.ok) { alert('Error al desadjudicar.'); return; }
   await cargar();
 }
 

@@ -34,9 +34,9 @@
         <span class="nav-icon">📦</span> Catálogo
       </a>
       <a href="/admin/proveedores.html" class="nav-item">
-      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
         <span class="nav-icon">👥</span> Proveedores
       </a>
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -69,7 +69,7 @@
         <div class="card-header">
           <span class="card-title" id="count-label">— productos</span>
           <input type="text" id="buscar" class="form-control" style="width:220px"
-            placeholder="Buscar por nombre..." oninput="filtrar()">
+            placeholder="Buscar por nombre..." oninput="renderTabla()">
         </div>
         <div class="table-wrapper">
           <table>
@@ -172,13 +172,9 @@ async function cargarProductos() {
   renderTabla();
 }
 
-function filtrar() {
-  renderTabla();
-}
-
 function renderTabla() {
   const q = document.getElementById('buscar').value.toLowerCase();
-  const lista = productos.filter(p => p.nombre.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q));
+  const lista = productos.filter(p => p.nombre.toLowerCase().includes(q) || (p.descripcion || '').toLowerCase().includes(q));
   document.getElementById('count-label').textContent = `${lista.length} producto(s)`;
 
   const tbody = document.getElementById('tabla-productos');

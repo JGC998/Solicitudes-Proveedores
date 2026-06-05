@@ -169,7 +169,7 @@ async function loadSolicitudes() {
 
 function renderSolicitudCard(s, cerrada = false) {
   const productos = s.productos.map(p =>
-    `<span class="product-pill">${p.producto?.nombre || 'Producto'} × ${p.cantidad}</span>`
+    `<span class="product-pill">${escapeHtml(p.producto?.nombre || 'Producto')} × ${p.cantidad}</span>`
   ).join('');
 
   const badge = s.ya_cotizado
@@ -190,10 +190,10 @@ function renderSolicitudCard(s, cerrada = false) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem">
-              <strong style="font-size:1rem">${s.titulo}</strong>
+              <strong style="font-size:1rem">${escapeHtml(s.titulo)}</strong>
               ${badge}
             </div>
-            ${s.descripcion ? `<p class="text-muted text-sm mb-1">${s.descripcion}</p>` : ''}
+            ${s.descripcion ? `<p class="text-muted text-sm mb-1">${escapeHtml(s.descripcion)}</p>` : ''}
             <div style="margin:.5rem 0">${productos}</div>
             <div class="text-muted text-sm" style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
               Fecha límite: <strong>${s.fecha_limite}</strong>

@@ -1,3 +1,31 @@
+// ── Escape HTML para prevenir XSS ────────────────────────────────────────────
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Tiempo real (SSE) ─────────────────────────────────────────────────────────
+function initEventos(callback) {
+  let es;
+  function conectar() {
+    es = new EventSource('/api/eventos');
+    es.onmessage = e => {
+      try {
+        const evento = JSON.parse(e.data);
+        if (evento.tipo !== 'ping') callback(evento);
+      } catch {}
+    };
+    // Reconectar si se cae
+    es.onerror = () => { es.close(); setTimeout(conectar, 3000); };
+  }
+  conectar();
+}
+
 // ── Mobile sidebar ────────────────────────────────────────────────────────────
 function toggleSidebar() {
   document.querySelector('.sidebar')?.classList.toggle('open');

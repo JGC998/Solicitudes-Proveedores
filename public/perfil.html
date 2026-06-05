@@ -149,24 +149,28 @@ async function cambiarPassword() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
-  const res = await fetch('/api/auth/password', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ current_password: actual, new_password: nueva })
-  });
-  const data = await res.json();
+  try {
+    const res = await fetch('/api/auth/password', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: actual, new_password: nueva })
+    });
+    const data = await res.json();
 
-  if (!res.ok) {
-    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-  } else {
-    alertEl.innerHTML = `<div class="alert alert-success">✓ Contraseña cambiada correctamente.</div>`;
-    document.getElementById('pass-actual').value = '';
-    document.getElementById('pass-nueva').value = '';
-    document.getElementById('pass-confirm').value = '';
+    if (!res.ok) {
+      alertEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error)}</div>`;
+    } else {
+      alertEl.innerHTML = `<div class="alert alert-success">✓ Contraseña cambiada correctamente.</div>`;
+      document.getElementById('pass-actual').value = '';
+      document.getElementById('pass-nueva').value = '';
+      document.getElementById('pass-confirm').value = '';
+    }
+  } catch {
+    alertEl.innerHTML = `<div class="alert alert-danger">Error de conexión. Inténtalo de nuevo.</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Cambiar contraseña';
   }
-
-  btn.disabled = false;
-  btn.textContent = 'Cambiar contraseña';
 }
 
 document.addEventListener('DOMContentLoaded', init);

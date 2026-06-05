@@ -34,9 +34,9 @@
         <span class="nav-icon">📦</span> Catálogo
       </a>
       <a href="/admin/proveedores.html" class="nav-item active">
-      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
         <span class="nav-icon">👥</span> Proveedores
       </a>
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -97,7 +97,6 @@
               <tr>
                 <th>Proveedor</th>
                 <th>Email</th>
-                <th>Contraseña</th>
                 <th>Estado</th>
                 <th>Cotizaciones</th>
                 <th>Acciones</th>
@@ -127,7 +126,7 @@
     <div class="form-group">
       <label class="form-label" id="label-password">Contraseña *</label>
       <div style="display:flex;gap:.5rem">
-        <input id="campo-password" type="text" class="form-control" placeholder="Contraseña de acceso">
+        <input id="campo-password" type="password" class="form-control" placeholder="Contraseña de acceso">
         <button type="button" class="btn btn-secondary btn-sm" onclick="generarPassword()" style="white-space:nowrap">
           Generar
         </button>
@@ -244,17 +243,12 @@ function renderTabla() {
         <td>
           <div style="display:flex;align-items:center;gap:.6rem">
             <div style="width:32px;height:32px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0">
-              ${p.nombre[0].toUpperCase()}
+              ${escapeHtml(p.nombre[0].toUpperCase())}
             </div>
-            <strong>${p.nombre}</strong>
+            <strong>${escapeHtml(p.nombre)}</strong>
           </div>
         </td>
-        <td class="text-muted">${p.email}</td>
-        <td>
-          <span class="text-muted text-sm" style="font-family:monospace" id="pass-${p.id}">••••••••</span>
-          <button class="btn btn-secondary btn-sm" style="margin-left:.3rem;padding:.15rem .4rem"
-            onclick="togglePass(${p.id}, '${p.password || ''}')">👁</button>
-        </td>
+        <td class="text-muted">${escapeHtml(p.email)}</td>
         <td>
           <span class="badge ${activo ? 'badge-success' : 'badge-danger'}">${activo ? 'Activo' : 'Inactivo'}</span>
         </td>
@@ -270,11 +264,6 @@ function renderTabla() {
       </tr>
     `;
   }).join('');
-}
-
-function togglePass(id, pass) {
-  const el = document.getElementById(`pass-${id}`);
-  el.textContent = el.textContent === '••••••••' ? (pass || '(sin contraseña)') : '••••••••';
 }
 
 function generarPassword() {
@@ -293,7 +282,7 @@ function abrirModal(id) {
     document.getElementById('edit-id').value = id;
     document.getElementById('campo-nombre').value = p.nombre;
     document.getElementById('campo-email').value = p.email;
-    document.getElementById('campo-password').value = p.password || '';
+    document.getElementById('campo-password').value = '';
     document.getElementById('label-password').textContent = 'Contraseña (dejar en blanco para no cambiar)';
     document.getElementById('hint-password').textContent = 'Si no quieres cambiarla, déjalo vacío.';
   } else {
@@ -353,9 +342,9 @@ async function guardar() {
 
   if (editId) {
     const idx = proveedores.findIndex(p => p.id === parseInt(editId));
-    if (idx !== -1) proveedores[idx] = { ...proveedores[idx], ...data, password: password || proveedores[idx].password };
+    if (idx !== -1) proveedores[idx] = { ...proveedores[idx], ...data };
   } else {
-    proveedores.push({ ...data, password });
+    proveedores.push(data);
   }
 
   cerrarModal();
