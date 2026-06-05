@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis & KPIs — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item active">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Análisis & KPIs</h1>
+        <p class="page-subtitle">Estadísticas del sistema de solicitudes de presupuesto</p>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div id="loading" class="loading"><div class="spinner"></div> Calculando KPIs...</div>
+      <div id="content" class="hidden">
+
+        <!-- KPIs -->
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <!-- ── Filtros ─────────────────────────────────────────── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <span class="card-title">Filtros</span>
+            <button class="btn btn-secondary btn-sm" onclick="resetFiltros()">Restablecer</button>
+          </div>
+          <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+            <div>
+              <p class="form-label" style="margin-bottom:.5rem">Proveedores</p>
+              <div id="filtro-proveedores" style="display:flex;flex-wrap:wrap;gap:.4rem"></div>
+            </div>
+            <div>
+              <p class="form-label" style="margin-bottom:.5rem">Productos</p>
+              <div id="filtro-productos" style="display:flex;flex-wrap:wrap;gap:.4rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Ranking de proveedores (T-07) ──────────────────── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <span class="card-title">Ranking de proveedores</span>
+            <span class="text-muted text-sm">Ordenado por tasa de respuesta</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Proveedor</th>
+                  <th>Cotizaciones</th>
+                  <th>Tasa de respuesta</th>
+                  <th>Precio vs. mercado</th>
+                  <th>Plazo medio</th>
+                  <th>Adjudicaciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-ranking"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Gráficas fila 1 ────────────────────────────────── -->
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Estado de solicitudes</span></div>
+            <div class="chart-container"><canvas id="chart-estados"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Participación por proveedor</span></div>
+            <div class="chart-container"><canvas id="chart-participacion"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ── Comparativa de precios (T-08 filtros aplicados) ── -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <span class="card-title">Comparativa de precios por proveedor y producto</span>
+            <span class="text-muted text-sm">Precio unitario (€)</span>
+          </div>
+          <div class="chart-container" style="padding:1.5rem">
+            <canvas id="chart-precios"></canvas>
+          </div>
+        </div>
+
+        <!-- ── Histórico de precios (T-06) ───────────────────── -->
+        <div class="card mt-3" id="card-historico">
+          <div class="card-header">
+            <span class="card-title">Evolución histórica de precios</span>
+            <select id="select-producto-hist" class="form-control" style="width:auto"
+              onchange="renderHistorico()"></select>
+          </div>
+          <div id="historico-body">
+            <div class="chart-container" style="padding:1.5rem">
+              <canvas id="chart-historico"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Ahorro potencial ───────────────────────────────── -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <span class="card-title">Análisis de ahorro potencial</span>
+            <span class="text-muted text-sm">Diferencia entre precio máximo y mínimo recibido</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Precio mínimo</th>
+                  <th>Precio máximo</th>
+                  <th>Precio medio</th>
+                  <th>Ahorro potencial</th>
+                  <th>% Ahorro</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-ahorro"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Comparativa por proveedor (detallada) ─────────── -->
+        <div class="card mt-3">
+          <div class="card-header"><span class="card-title">Precios detallados por proveedor</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead id="thead-detalle"></thead>
+              <tbody id="tbody-detalle"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const PALETTE = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
+let rawData = null;
+let filtrosProveedores = new Set();
+let filtrosProductos = new Set();
+let charts = {};
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await cargar();
+}
+
+async function cargar() {
+  const res = await fetch('/api/analisis/kpis');
+  rawData = await res.json();
+
+  // Inicializar filtros con todos activos
+  filtrosProveedores = new Set(rawData.comparativaProveedores.map(p => p.nombre));
+  filtrosProductos = new Set(rawData.productosConDatos);
+
+  renderKpis(rawData.kpis);
+  renderFiltros();
+  renderRanking();
+  renderCharts();
+  renderHistoricoSelector();
+  renderHistorico();
+  renderTablaAhorro();
+  renderTablaDetalle();
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function renderKpis(k) {
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card kpi-primary">
+      <div class="kpi-label">Total solicitudes</div>
+      <div class="kpi-value">${k.totalSolicitudes}</div>
+      <div class="kpi-sub">${k.solicitudesActivas} activas</div>
+    </div>
+    <div class="kpi-card kpi-success">
+      <div class="kpi-label">Cotizaciones recibidas</div>
+      <div class="kpi-value">${k.totalCotizaciones}</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-label">Tasa de respuesta</div>
+      <div class="kpi-value">${k.tasaRespuesta}%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Proveedores</div>
+      <div class="kpi-value">${k.totalProveedores}</div>
+    </div>
+  `;
+}
+
+// ── Filtros (T-08) ────────────────────────────────────────────────────────────
+function renderFiltros() {
+  const fpEl = document.getElementById('filtro-proveedores');
+  fpEl.innerHTML = rawData.comparativaProveedores.map((p, i) => `
+    <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;padding:.3rem .6rem;background:${PALETTE[i%PALETTE.length]}22;border-radius:999px;border:2px solid ${filtrosProveedores.has(p.nombre) ? PALETTE[i%PALETTE.length] : 'transparent'}">
+      <input type="checkbox" ${filtrosProveedores.has(p.nombre) ? 'checked' : ''}
+        data-nombre="${p.nombre}"
+        style="accent-color:${PALETTE[i%PALETTE.length]}"
+        onchange="toggleProvFiltro('${p.nombre}', this.checked)">
+      <span style="font-size:.8rem;font-weight:600;color:${PALETTE[i%PALETTE.length]}">${p.nombre}</span>
+    </label>
+  `).join('');
+
+  const fprEl = document.getElementById('filtro-productos');
+  fprEl.innerHTML = rawData.productosConDatos.map(nombre => `
+    <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;padding:.3rem .6rem;background:var(--primary-light);border-radius:999px;border:2px solid ${filtrosProductos.has(nombre) ? 'var(--primary)' : 'transparent'}">
+      <input type="checkbox" ${filtrosProductos.has(nombre) ? 'checked' : ''}
+        data-nombre="${nombre}"
+        style="accent-color:var(--primary)"
+        onchange="toggleProdFiltro('${nombre}', this.checked)">
+      <span style="font-size:.8rem;font-weight:600;color:var(--primary)">${nombre}</span>
+    </label>
+  `).join('');
+}
+
+function toggleProvFiltro(nombre, activo) {
+  if (activo) filtrosProveedores.add(nombre); else filtrosProveedores.delete(nombre);
+  renderFiltros();
+  actualizarConFiltros();
+}
+
+function toggleProdFiltro(nombre, activo) {
+  if (activo) filtrosProductos.add(nombre); else filtrosProductos.delete(nombre);
+  renderFiltros();
+  actualizarConFiltros();
+}
+
+function resetFiltros() {
+  filtrosProveedores = new Set(rawData.comparativaProveedores.map(p => p.nombre));
+  filtrosProductos = new Set(rawData.productosConDatos);
+  renderFiltros();
+  actualizarConFiltros();
+}
+
+function actualizarConFiltros() {
+  renderRanking();
+  actualizarChartPrecios();
+  renderTablaAhorro();
+  renderTablaDetalle();
+}
+
+// ── Ranking (T-07) ───────────────────────────────────────────────────────────
+function renderRanking() {
+  const tbody = document.getElementById('tabla-ranking');
+  const lista = rawData.ranking.filter(r => filtrosProveedores.has(r.nombre));
+
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Sin datos</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map((r, i) => {
+    const tasaBadge = r.tasa >= 80 ? 'badge-success' : r.tasa >= 50 ? 'badge-warning' : 'badge-danger';
+    let precioHtml = '—';
+    if (r.precioRelativo !== null) {
+      const col = r.precioRelativo <= 0 ? 'var(--success)' : 'var(--danger)';
+      const signo = r.precioRelativo > 0 ? '+' : '';
+      precioHtml = `<span style="color:${col};font-weight:700">${signo}${r.precioRelativo}%</span>
+        <span class="text-muted text-sm"> vs. media</span>`;
+    }
+    const adjBadge = r.adjudicaciones > 0
+      ? `<span class="badge badge-success">👑 ${r.adjudicaciones}</span>`
+      : `<span class="badge badge-gray">0</span>`;
+
+    return `
+      <tr>
+        <td><strong style="color:var(--text-muted)">#${i+1}</strong></td>
+        <td><strong>${r.nombre}</strong></td>
+        <td>${r.cotizaciones} / ${r.solicitudesVisibles}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span class="badge ${tasaBadge}">${r.tasa}%</span>
+            <div class="savings-bar" style="width:80px"><div class="savings-fill" style="width:${Math.min(r.tasa,100)}%;background:${r.tasa>=80?'var(--success)':r.tasa>=50?'var(--warning)':'var(--danger)'}"></div></div>
+          </div>
+        </td>
+        <td>${precioHtml}</td>
+        <td>${r.plazoMedio !== null ? `${r.plazoMedio} días` : '—'}</td>
+        <td>${adjBadge}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── Gráficas base ─────────────────────────────────────────────────────────────
+function renderCharts() {
+  // Doughnut estados
+  const est = rawData.estadosSolicitudes;
+  if (charts.estados) charts.estados.destroy();
+  charts.estados = new Chart(document.getElementById('chart-estados'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Activas', 'Cerradas', 'Borrador'],
+      datasets: [{ data: [est.activa, est.cerrada, est.borrador], backgroundColor: ['#10b981','#64748b','#f59e0b'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, cutout: '55%' }
+  });
+
+  // Bar participación
+  const provs = rawData.cotizacionesPorProveedor;
+  if (charts.participacion) charts.participacion.destroy();
+  charts.participacion = new Chart(document.getElementById('chart-participacion'), {
+    type: 'bar',
+    data: {
+      labels: provs.map(p => p.nombre),
+      datasets: [{ label: 'Cotizaciones', data: provs.map(p => p.total), backgroundColor: PALETTE, borderRadius: 6, borderSkipped: false }]
+    },
+    options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+
+  // Grouped bar precios
+  actualizarChartPrecios();
+}
+
+function actualizarChartPrecios() {
+  const provsFiltrados = rawData.comparativaProveedores.filter(p => filtrosProveedores.has(p.nombre));
+  const productosIdx = rawData.productosConDatos.map((n, i) => ({ nombre: n, idx: i })).filter(p => filtrosProductos.has(p.nombre));
+  const labels = productosIdx.map(p => p.nombre);
+
+  const datasets = provsFiltrados.map((prov, i) => ({
+    label: prov.nombre,
+    data: productosIdx.map(p => prov.precios[p.idx] ?? null),
+    backgroundColor: PALETTE[rawData.comparativaProveedores.indexOf(prov) % PALETTE.length] + 'cc',
+    borderColor:     PALETTE[rawData.comparativaProveedores.indexOf(prov) % PALETTE.length],
+    borderWidth: 1,
+    borderRadius: 4
+  }));
+
+  if (charts.precios) charts.precios.destroy();
+  if (labels.length === 0 || datasets.length === 0) return;
+  charts.precios = new Chart(document.getElementById('chart-precios'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => ctx.raw !== null ? `${ctx.dataset.label}: ${ctx.raw.toFixed(2)} €` : `${ctx.dataset.label}: —` } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => v + ' €' } } }
+    }
+  });
+}
+
+// ── Histórico (T-06) ─────────────────────────────────────────────────────────
+function renderHistoricoSelector() {
+  const sel = document.getElementById('select-producto-hist');
+  if (rawData.historico.length === 0) {
+    document.getElementById('card-historico').classList.add('hidden');
+    return;
+  }
+  document.getElementById('card-historico').classList.remove('hidden');
+  sel.innerHTML = rawData.historico.map(h =>
+    `<option value="${h.producto_id}">${h.producto_nombre}</option>`
+  ).join('');
+}
+
+function renderHistorico() {
+  if (!rawData || rawData.historico.length === 0) return;
+  const prodId = parseInt(document.getElementById('select-producto-hist').value);
+  const data = rawData.historico.find(h => h.producto_id === prodId);
+  if (!data) return;
+
+  const labels = data.solicitudes.map(s => `${s.nombre}\n(${s.fecha})`);
+
+  // Collect all unique providers across all solicitudes
+  const proveedoresUnicos = [...new Set(data.solicitudes.flatMap(s => s.precios.map(p => p.proveedor)))];
+
+  const datasets = proveedoresUnicos.map((nombre, i) => {
+    const color = PALETTE[i % PALETTE.length];
+    const puntos = data.solicitudes.map(s => {
+      const p = s.precios.find(x => x.proveedor === nombre);
+      return p ? p.precio : null;
+    });
+    return {
+      label: nombre,
+      data: puntos,
+      borderColor: color,
+      backgroundColor: color + '33',
+      borderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      spanGaps: false
+    };
+  });
+
+  if (charts.historico) charts.historico.destroy();
+  charts.historico = new Chart(document.getElementById('chart-historico'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: ctx => ctx.raw !== null ? `${ctx.dataset.label}: ${ctx.raw.toFixed(2)} €` : `${ctx.dataset.label}: sin dato` } }
+      },
+      scales: {
+        y: { beginAtZero: false, ticks: { callback: v => v + ' €' } }
+      }
+    }
+  });
+}
+
+// ── Ahorro potencial ──────────────────────────────────────────────────────────
+function renderTablaAhorro() {
+  const resumen = rawData.resumenPrecios.filter(r => filtrosProductos.has(r.nombre));
+  const tbody = document.getElementById('tabla-ahorro');
+  if (resumen.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1rem">Sin datos para los filtros seleccionados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = resumen.map(r => `
+    <tr>
+      <td><strong>${r.nombre}</strong></td>
+      <td style="color:var(--success);font-weight:700">${r.min.toFixed(2)} €</td>
+      <td style="color:var(--danger)">${r.max.toFixed(2)} €</td>
+      <td>${r.avg.toFixed(2)} €</td>
+      <td>
+        <strong>${r.ahorro.toFixed(2)} €</strong>
+        <div class="savings-bar"><div class="savings-fill" style="width:${Math.min(r.ahorro_pct,100)}%"></div></div>
+      </td>
+      <td><span class="badge ${r.ahorro_pct>20?'badge-success':r.ahorro_pct>10?'badge-warning':'badge-gray'}">${r.ahorro_pct}%</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── Tabla detallada ───────────────────────────────────────────────────────────
+function renderTablaDetalle() {
+  const provsFiltrados = rawData.comparativaProveedores.filter(p => filtrosProveedores.has(p.nombre));
+  const productosIdx = rawData.productosConDatos.map((n, i) => ({ nombre: n, idx: i })).filter(p => filtrosProductos.has(p.nombre));
+
+  if (productosIdx.length === 0 || provsFiltrados.length === 0) {
+    document.getElementById('thead-detalle').innerHTML = '';
+    document.getElementById('tbody-detalle').innerHTML = `<tr><td style="text-align:center;color:var(--text-muted);padding:1rem">Sin datos para los filtros seleccionados</td></tr>`;
+    return;
+  }
+
+  document.getElementById('thead-detalle').innerHTML = `
+    <tr>
+      <th>Proveedor</th>
+      ${productosIdx.map(p => `<th>${p.nombre}</th>`).join('')}
+    </tr>
+  `;
+  document.getElementById('tbody-detalle').innerHTML = provsFiltrados.map(prov => `
+    <tr>
+      <td><strong>${prov.nombre}</strong></td>
+      ${productosIdx.map(p => {
+        const precio = prov.precios[p.idx];
+        if (precio === null || precio === undefined) return `<td><span class="cell-empty">—</span></td>`;
+        const res = rawData.resumenPrecios.find(r => r.nombre === p.nombre);
+        const cls = res && precio === res.min ? 'cell-best' : (res && precio === res.max && res.min !== res.max ? 'cell-worst' : '');
+        return `<td><span class="${cls}" style="padding:.2rem .4rem;border-radius:4px;display:inline-block">${precio.toFixed(2)} €</span></td>`;
+      }).join('')}
+    </tr>
+  `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

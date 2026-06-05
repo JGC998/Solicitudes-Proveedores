@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi perfil — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Rellenado dinámicamente según rol -->
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar" id="user-role-label">—</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Mi perfil</h1>
+        <p class="page-subtitle">Gestiona los datos de tu cuenta</p>
+      </div>
+    </div>
+
+    <div class="page-body" style="max-width:560px">
+
+      <!-- Info de cuenta -->
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">Información de cuenta</span></div>
+        <div class="card-body">
+          <div style="display:grid;gap:.8rem">
+            <div>
+              <div class="kpi-label">Nombre</div>
+              <div class="fw-bold" id="info-nombre">—</div>
+            </div>
+            <div>
+              <div class="kpi-label">Email</div>
+              <div id="info-email" class="text-muted">—</div>
+            </div>
+            <div>
+              <div class="kpi-label">Rol</div>
+              <div id="info-rol"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cambio de contraseña (T-12) -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Cambiar contraseña</span></div>
+        <div class="card-body">
+          <div id="pass-alert"></div>
+          <div class="form-group">
+            <label class="form-label">Contraseña actual *</label>
+            <input id="pass-actual" type="password" class="form-control" placeholder="Tu contraseña actual">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nueva contraseña *</label>
+            <input id="pass-nueva" type="password" class="form-control" placeholder="Mínimo 6 caracteres">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmar nueva contraseña *</label>
+            <input id="pass-confirm" type="password" class="form-control" placeholder="Repite la nueva contraseña">
+          </div>
+          <button class="btn btn-primary" id="btn-cambiar" onclick="cambiarPassword()">
+            Cambiar contraseña
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+const NAV_ADMIN = `
+  <a href="/admin/dashboard.html" class="nav-item"><span class="nav-icon">⊞</span> Dashboard</a>
+  <a href="/admin/solicitudes.html" class="nav-item"><span class="nav-icon">📄</span> Solicitudes</a>
+  <a href="/admin/nueva-solicitud.html" class="nav-item"><span class="nav-icon">＋</span> Nueva solicitud</a>
+  <a href="/admin/analisis.html" class="nav-item"><span class="nav-icon">📊</span> Análisis & KPIs</a>
+  <p class="sidebar-section-label">Configuración</p>
+  <a href="/admin/productos.html" class="nav-item"><span class="nav-icon">📦</span> Catálogo</a>
+  <a href="/admin/proveedores.html" class="nav-item"><span class="nav-icon">👥</span> Proveedores</a>
+`;
+
+const NAV_PROVEEDOR = `
+  <p class="sidebar-section-label">Proveedor</p>
+  <a href="/proveedor/dashboard.html" class="nav-item"><span class="nav-icon">⊞</span> Mi panel</a>
+  <a href="/proveedor/historial.html" class="nav-item"><span class="nav-icon">📋</span> Mis cotizaciones</a>
+`;
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+
+    document.getElementById('sidebar-nav').innerHTML = user.rol === 'admin' ? NAV_ADMIN : NAV_PROVEEDOR;
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    document.getElementById('user-role-label').textContent = user.rol === 'admin' ? 'Administrador' : 'Proveedor';
+
+    document.getElementById('info-nombre').textContent = user.nombre;
+    document.getElementById('info-email').textContent = user.email;
+    document.getElementById('info-rol').innerHTML = `<span class="badge ${user.rol === 'admin' ? 'badge-info' : 'badge-success'}">${user.rol === 'admin' ? 'Administrador' : 'Proveedor'}</span>`;
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+}
+
+async function cambiarPassword() {
+  const actual = document.getElementById('pass-actual').value;
+  const nueva = document.getElementById('pass-nueva').value;
+  const confirm = document.getElementById('pass-confirm').value;
+  const alertEl = document.getElementById('pass-alert');
+  alertEl.innerHTML = '';
+
+  if (!actual || !nueva || !confirm) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Rellena todos los campos.</div>`;
+    return;
+  }
+  if (nueva !== confirm) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Las contraseñas nuevas no coinciden.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('btn-cambiar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  const res = await fetch('/api/auth/password', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: actual, new_password: nueva })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+  } else {
+    alertEl.innerHTML = `<div class="alert alert-success">✓ Contraseña cambiada correctamente.</div>`;
+    document.getElementById('pass-actual').value = '';
+    document.getElementById('pass-nueva').value = '';
+    document.getElementById('pass-confirm').value = '';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Cambiar contraseña';
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

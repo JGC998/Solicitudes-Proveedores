@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitudes — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item active">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Solicitudes de presupuesto</h1>
+        <p class="page-subtitle">Gestiona las RFQs enviadas a proveedores</p>
+      </div>
+      <a href="/admin/nueva-solicitud.html" class="btn btn-primary">＋ Nueva solicitud</a>
+    </div>
+
+    <div class="page-body">
+      <!-- Filtros -->
+      <div class="card mb-2">
+        <div class="card-body" style="padding:.8rem 1.4rem">
+          <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap">
+            <select id="filtro-estado" class="form-control" style="width:auto">
+              <option value="">Todos los estados</option>
+              <option value="activa">Activas</option>
+              <option value="cerrada">Cerradas</option>
+              <option value="borrador">Borrador</option>
+            </select>
+            <input id="filtro-buscar" type="text" class="form-control" style="width:240px" placeholder="Buscar por título...">
+          </div>
+        </div>
+      </div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+
+      <div id="content" class="hidden card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Descripción</th>
+                <th>Productos</th>
+                <th>Creada</th>
+                <th>Límite</th>
+                <th>Estado</th>
+                <th>Respuestas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-solicitudes"></tbody>
+          </table>
+        </div>
+        <div id="paginacion-sol" class="paginacion"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal confirmación eliminar -->
+<div id="modal-delete" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 class="modal-title">¿Eliminar solicitud?</h2>
+    <p class="modal-body">Esta acción eliminará la solicitud y todas sus cotizaciones. No se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="modal-confirm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let allSolicitudes = [];
+let deleteId = null;
+let paginaActual = 1;
+const POR_PAGINA = 10;
+
+function badgeUrgencia(fechaLimite) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const limite = new Date(fechaLimite + 'T00:00:00');
+  const dias = Math.round((limite - hoy) / 86400000);
+  if (dias < 0)  return `<span class="badge badge-danger">⚠ Vencida</span>`;
+  if (dias === 0) return `<span class="badge badge-danger">⚠ Hoy</span>`;
+  if (dias <= 3)  return `<span class="badge badge-warning">🔥 ${dias}d</span>`;
+  return '';
+}
+
+function renderPaginacion(total, totalPags, el) {
+  if (totalPags <= 1) { el.innerHTML = ''; return; }
+  let html = `<button class="btn-pag" onclick="cambiarPagina(${paginaActual-1})" ${paginaActual===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPags; i++)
+    html += `<button class="btn-pag ${i===paginaActual?'active':''}" onclick="cambiarPagina(${i})">${i}</button>`;
+  html += `<button class="btn-pag" onclick="cambiarPagina(${paginaActual+1})" ${paginaActual===totalPags?'disabled':''}>›</button>`;
+  html += `<span class="paginacion-info">${total} solicitudes</span>`;
+  el.innerHTML = html;
+}
+
+function cambiarPagina(n) { paginaActual = n; renderTabla(); }
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  document.getElementById('filtro-estado').addEventListener('change', renderTabla);
+  document.getElementById('filtro-buscar').addEventListener('input', renderTabla);
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    document.getElementById('modal-delete').classList.add('hidden');
+  });
+  document.getElementById('modal-confirm').addEventListener('click', async () => {
+    if (!deleteId) return;
+    await fetch(`/api/solicitudes/${deleteId}`, { method: 'DELETE' });
+    document.getElementById('modal-delete').classList.add('hidden');
+    allSolicitudes = allSolicitudes.filter(s => s.id !== deleteId);
+    deleteId = null;
+    renderTabla();
+  });
+
+  await loadSolicitudes();
+}
+
+async function loadSolicitudes() {
+  const res = await fetch('/api/solicitudes');
+  allSolicitudes = await res.json();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+  renderTabla();
+}
+
+function renderTabla() {
+  const estado = document.getElementById('filtro-estado').value;
+  const buscar = document.getElementById('filtro-buscar').value.toLowerCase();
+  let lista = allSolicitudes;
+  if (estado) lista = lista.filter(s => s.estado === estado);
+  if (buscar) lista = lista.filter(s => s.titulo.toLowerCase().includes(buscar));
+
+  const totalPags = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  if (paginaActual > totalPags) paginaActual = 1;
+  const slice = lista.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
+
+  const tbody = document.getElementById('tabla-solicitudes');
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No hay solicitudes con estos filtros</div></div></td></tr>`;
+    document.getElementById('paginacion-sol').innerHTML = '';
+    return;
+  }
+
+  tbody.innerHTML = slice.map(s => {
+    const prods = s.productos.map(p => `<span class="product-pill">${p.producto?.nombre || 'Producto'}</span>`).join('');
+    const urgBadge = s.estado === 'activa' ? badgeUrgencia(s.fecha_limite) : '';
+    return `
+      <tr>
+        <td><strong>${s.titulo}</strong></td>
+        <td class="text-muted text-sm">${s.descripcion ? s.descripcion.substring(0, 60) + '...' : '—'}</td>
+        <td>${prods}</td>
+        <td class="text-muted text-sm">${s.fecha_creacion}</td>
+        <td class="text-muted text-sm">${s.fecha_limite} ${urgBadge}</td>
+        <td>
+          <select class="form-control" style="width:auto;padding:.25rem .5rem;font-size:.8rem" onchange="cambiarEstado(${s.id}, this.value)">
+            <option value="activa" ${s.estado === 'activa' ? 'selected' : ''}>Activa</option>
+            <option value="cerrada" ${s.estado === 'cerrada' ? 'selected' : ''}>Cerrada</option>
+            <option value="borrador" ${s.estado === 'borrador' ? 'selected' : ''}>Borrador</option>
+          </select>
+        </td>
+        <td><span class="badge badge-info">${s.num_cotizaciones} resp.</span></td>
+        <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+          <a href="/admin/detalle.html?id=${s.id}" class="btn btn-secondary btn-sm">Ver</a>
+          <button class="btn btn-secondary btn-sm" onclick="duplicar(${s.id})">Duplicar</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${s.id})">Eliminar</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  renderPaginacion(lista.length, totalPags, document.getElementById('paginacion-sol'));
+}
+
+async function cambiarEstado(id, estado) {
+  await fetch(`/api/solicitudes/${id}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado })
+  });
+  const idx = allSolicitudes.findIndex(s => s.id === id);
+  if (idx !== -1) allSolicitudes[idx].estado = estado;
+}
+
+async function duplicar(id) {
+  const res = await fetch(`/api/solicitudes/${id}/duplicar`, { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) {
+    allSolicitudes.push({ ...data, num_cotizaciones: 0, productos: data.productos || [] });
+    renderTabla();
+    window.location.href = `/admin/detalle.html?id=${data.id}`;
+  }
+}
+
+function confirmDelete(id) {
+  deleteId = id;
+  document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

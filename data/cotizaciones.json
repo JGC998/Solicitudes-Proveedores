@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "solicitud_id": 1,
+    "proveedor_id": 2,
+    "fecha": "2025-01-18",
+    "notas": "Precio con IVA incluido. Entrega en 3-5 días laborables.",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 4,
+        "precio_unitario": 4.5,
+        "plazo_entrega": 3
+      },
+      {
+        "producto_id": 5,
+        "precio_unitario": 12,
+        "plazo_entrega": 3
+      },
+      {
+        "producto_id": 7,
+        "precio_unitario": 2.8,
+        "plazo_entrega": 5
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "solicitud_id": 1,
+    "proveedor_id": 3,
+    "fecha": "2025-01-19",
+    "notas": "Descuento del 5% para pedidos superiores a 500€.",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 4,
+        "precio_unitario": 4.2,
+        "plazo_entrega": 5
+      },
+      {
+        "producto_id": 5,
+        "precio_unitario": 13.5,
+        "plazo_entrega": 2
+      },
+      {
+        "producto_id": 7,
+        "precio_unitario": 2.6,
+        "plazo_entrega": 4
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "solicitud_id": 1,
+    "proveedor_id": 4,
+    "fecha": "2025-01-21",
+    "notas": "Precio sin IVA. Transporte gratuito para pedidos superiores a 200€.",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 4,
+        "precio_unitario": 4.8,
+        "plazo_entrega": 2
+      },
+      {
+        "producto_id": 5,
+        "precio_unitario": 11.8,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 7,
+        "precio_unitario": 3,
+        "plazo_entrega": 3
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "solicitud_id": 2,
+    "proveedor_id": 2,
+    "fecha": "2025-05-08",
+    "notas": "Stock disponible inmediatamente.",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 8.5,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 6.2,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 8,
+        "precio_unitario": 18,
+        "plazo_entrega": 5
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "solicitud_id": 2,
+    "proveedor_id": 5,
+    "fecha": "2025-05-10",
+    "notas": "Posibilidad de entrega urgente en 24h con suplemento del 15%.",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 9,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 5.8,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 8,
+        "precio_unitario": 17.5,
+        "plazo_entrega": 3
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "solicitud_id": 2,
+    "proveedor_id": 3,
+    "fecha": "2026-05-30",
+    "notas": "",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 10,
+        "plazo_entrega": 90
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 15,
+        "plazo_entrega": 90
+      },
+      {
+        "producto_id": 8,
+        "precio_unitario": 8,
+        "plazo_entrega": 90
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "solicitud_id": 5,
+    "proveedor_id": 2,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": false,
+    "lineas": [
+      {
+        "producto_id": 4,
+        "precio_unitario": 10,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 10,
+        "precio_unitario": 4,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 11,
+        "precio_unitario": 10,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 12,
+        "precio_unitario": 18,
+        "plazo_entrega": 7
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "solicitud_id": 5,
+    "proveedor_id": 3,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": true,
+    "lineas": [
+      {
+        "producto_id": 4,
+        "precio_unitario": 5,
+        "plazo_entrega": 6
+      },
+      {
+        "producto_id": 10,
+        "precio_unitario": 2,
+        "plazo_entrega": 6
+      },
+      {
+        "producto_id": 11,
+        "precio_unitario": 7,
+        "plazo_entrega": 7
+      },
+      {
+        "producto_id": 12,
+        "precio_unitario": 14,
+        "plazo_entrega": 7
+      }
+    ]
+  }
+]

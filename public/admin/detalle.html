@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalle solicitud — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar">
+  <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
+  <span class="mobile-brand">RFQ Manager</span>
+  <div style="width:40px"></div>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item"><span class="nav-icon">⊞</span> Dashboard</a>
+      <a href="/admin/solicitudes.html" class="nav-item active"><span class="nav-icon">📄</span> Solicitudes</a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item"><span class="nav-icon">＋</span> Nueva solicitud</a>
+      <a href="/admin/analisis.html" class="nav-item"><span class="nav-icon">📊</span> Análisis & KPIs</a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item"><span class="nav-icon">📦</span> Catálogo</a>
+      <a href="/admin/proveedores.html" class="nav-item"><span class="nav-icon">👥</span> Proveedores</a>
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="page-title">Detalle de solicitud</h1>
+        <p class="page-subtitle" id="page-subtitle">Comparativa de precios por proveedor</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="header-actions"></div>
+    </div>
+
+    <div class="page-body">
+      <div class="breadcrumb">
+        <a href="/admin/solicitudes.html">Solicitudes</a>
+        <span class="breadcrumb-sep">›</span>
+        <span id="bc-title">Detalle</span>
+      </div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+      <div id="content" class="hidden">
+
+        <!-- Info solicitud -->
+        <div class="card mb-2">
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem">
+              <div><div class="kpi-label">Estado</div><div id="info-estado"></div></div>
+              <div><div class="kpi-label">Creada</div><div id="info-creada" class="fw-bold"></div></div>
+              <div><div class="kpi-label">Fecha límite</div><div id="info-limite" class="fw-bold"></div></div>
+              <div><div class="kpi-label">Respuestas</div><div id="info-respuestas" class="fw-bold"></div></div>
+              <div><div class="kpi-label">Invitados</div><div id="info-invitados" class="text-sm"></div></div>
+              <div id="info-orden-cell" class="hidden"><div class="kpi-label">Nº Orden</div><div id="info-orden" class="fw-bold" style="color:var(--primary)"></div></div>
+            </div>
+            <div id="info-desc" class="text-muted text-sm mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Tabla comparativa con coste total -->
+        <div class="card mb-2">
+          <div class="card-header">
+            <span class="card-title">Comparativa de precios</span>
+            <span class="text-muted text-sm">Verde = mejor precio · Rojo = más caro</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="table-compare">
+              <thead id="thead-compare"></thead>
+              <tbody id="tbody-compare"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Adjudicación -->
+        <div class="card mb-2" id="card-adjudicacion">
+          <div class="card-header">
+            <span class="card-title">Adjudicación del pedido</span>
+            <span id="badge-adjudicacion"></span>
+          </div>
+          <div class="card-body" id="body-adjudicacion"></div>
+        </div>
+
+        <!-- Notas -->
+        <div class="card" id="notas-section">
+          <div class="card-header"><span class="card-title">Notas de los proveedores</span></div>
+          <div id="notas-content" class="card-body"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal valoración -->
+<div id="modal-valoracion" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px">
+    <h2 class="modal-title">Valorar proveedor</h2>
+    <p class="modal-body" id="val-proveedor-nombre" style="margin-bottom:1rem"></p>
+    <div class="form-group">
+      <label class="form-label">Calidad del producto</label>
+      <div class="stars-input" id="stars-calidad">
+        <input type="radio" name="calidad" id="c5" value="5"><label for="c5">★</label>
+        <input type="radio" name="calidad" id="c4" value="4"><label for="c4">★</label>
+        <input type="radio" name="calidad" id="c3" value="3"><label for="c3">★</label>
+        <input type="radio" name="calidad" id="c2" value="2"><label for="c2">★</label>
+        <input type="radio" name="calidad" id="c1" value="1"><label for="c1">★</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cumplimiento de plazos</label>
+      <div class="stars-input" id="stars-plazo">
+        <input type="radio" name="plazo" id="p5" value="5"><label for="p5">★</label>
+        <input type="radio" name="plazo" id="p4" value="4"><label for="p4">★</label>
+        <input type="radio" name="plazo" id="p3" value="3"><label for="p3">★</label>
+        <input type="radio" name="plazo" id="p2" value="2"><label for="p2">★</label>
+        <input type="radio" name="plazo" id="p1" value="1"><label for="p1">★</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Competitividad de precio</label>
+      <div class="stars-input" id="stars-precio">
+        <input type="radio" name="precio" id="pr5" value="5"><label for="pr5">★</label>
+        <input type="radio" name="precio" id="pr4" value="4"><label for="pr4">★</label>
+        <input type="radio" name="precio" id="pr3" value="3"><label for="pr3">★</label>
+        <input type="radio" name="precio" id="pr2" value="2"><label for="pr2">★</label>
+        <input type="radio" name="precio" id="pr1" value="1"><label for="pr1">★</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Comentario (opcional)</label>
+      <textarea id="val-comentario" class="form-control" rows="2" placeholder="Observaciones sobre el pedido..."></textarea>
+    </div>
+    <div id="val-alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalVal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-val-guardar" onclick="enviarValoracion()">Guardar valoración</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/ui.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const solicitudId = parseInt(params.get('id'));
+let pageData = null;
+let valorProvId = null;
+
+async function init() {
+  if (!solicitudId) return (window.location.href = '/admin/solicitudes.html');
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+  await cargar();
+}
+
+async function cargar() {
+  const res = await fetch(`/api/analisis/solicitud/${solicitudId}`);
+  if (!res.ok) return (window.location.href = '/admin/solicitudes.html');
+  pageData = await res.json();
+  render();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+function render() {
+  const { solicitud, proveedores, comparacion, invitados } = pageData;
+
+  document.getElementById('page-title').textContent = solicitud.titulo;
+  document.getElementById('bc-title').textContent = solicitud.titulo;
+  document.getElementById('page-subtitle').textContent = `${proveedores.length} proveedor(es) han respondido`;
+
+  // Header actions
+  const next = { activa:'cerrada', cerrada:'activa' };
+  const nextLabel = { activa:'Cerrar solicitud', cerrada:'Reabrir solicitud' };
+  let actBtns = `
+    <button class="btn btn-secondary btn-sm" onclick="cambiarEstado('${next[solicitud.estado]||'cerrada'}')">
+      ${nextLabel[solicitud.estado]||'Cambiar estado'}
+    </button>`;
+  if (proveedores.length > 0) {
+    actBtns += `<button class="btn btn-secondary btn-sm" id="btn-csv" onclick="exportarCSV()">⬇ CSV</button>`;
+  }
+  const adjudicado = proveedores.find(p => p.adjudicada === true);
+  if (adjudicado && !solicitud.num_orden) {
+    actBtns += `<button class="btn btn-primary btn-sm" onclick="generarOrden()">📋 Generar orden compra</button>`;
+  }
+  if (solicitud.num_orden) {
+    actBtns += `<a href="/admin/orden-compra.html?id=${solicitudId}" class="btn btn-success btn-sm" target="_blank">🖨 Ver orden ${solicitud.num_orden}</a>`;
+  }
+  document.getElementById('header-actions').innerHTML = actBtns;
+
+  // Info cards
+  const bMap = { activa:'badge-success', cerrada:'badge-gray', borrador:'badge-warning' };
+  document.getElementById('info-estado').innerHTML = `<span class="badge ${bMap[solicitud.estado]||'badge-gray'}">${solicitud.estado}</span>${solicitud.recibida ? ' <span class="badge badge-success">✓ Recibido</span>' : ''}`;
+  document.getElementById('info-creada').textContent = solicitud.fecha_creacion;
+  document.getElementById('info-limite').textContent = solicitud.fecha_limite;
+  document.getElementById('info-respuestas').textContent = `${proveedores.length} respuesta(s)`;
+
+  if (invitados?.length > 0) {
+    document.getElementById('info-invitados').innerHTML = invitados.map(i => `<span class="product-pill">${i.nombre}</span>`).join('');
+  } else {
+    document.getElementById('info-invitados').textContent = 'Todos';
+  }
+  if (solicitud.num_orden) {
+    document.getElementById('info-orden-cell').classList.remove('hidden');
+    document.getElementById('info-orden').textContent = `${solicitud.num_orden} (${solicitud.fecha_orden})`;
+  }
+  if (solicitud.descripcion) document.getElementById('info-desc').textContent = solicitud.descripcion;
+
+  // Tabla comparativa CON COSTE TOTAL
+  if (proveedores.length === 0) {
+    document.getElementById('thead-compare').innerHTML = `<tr><th>Producto</th><th>Cant.</th><th>Unidad</th></tr>`;
+    document.getElementById('tbody-compare').innerHTML =
+      comparacion.map(c => `<tr><td><strong>${c.nombre}</strong></td><td>${c.cantidad}</td><td>${c.unidad}</td></tr>`).join('') +
+      `<tr><td colspan="3"><div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-title">Ningún proveedor ha respondido aún</div></div></td></tr>`;
+  } else {
+    document.getElementById('thead-compare').innerHTML = `
+      <tr>
+        <th>Producto</th><th>Cant.</th><th>Unidad</th>
+        ${proveedores.map(p => `<th style="text-align:center">${p.nombre}${p.adjudicada===true?' 👑':''}</th>`).join('')}
+        <th>Mejor precio</th>
+      </tr>
+    `;
+
+    // Filas de productos
+    const filas = comparacion.map(row => {
+      const celdas = proveedores.map(prov => {
+        const entry = row.precios.find(e => e.proveedor_id === prov.id);
+        if (!entry || entry.precio === null) return `<td style="text-align:center"><span class="cell-empty">—</span></td>`;
+        const isBest = entry.precio === row.precio_min;
+        const isWorst = entry.precio === row.precio_max && row.precio_min !== row.precio_max;
+        const cls = isBest ? 'cell-best' : (isWorst ? 'cell-worst' : '');
+        const total = entry.precio * row.cantidad;
+        const plazo = entry.plazo ? `<br><small style="opacity:.7">${entry.plazo}d</small>` : '';
+        return `<td style="text-align:center">
+          <span class="${cls}" style="padding:.25rem .5rem;border-radius:4px;display:inline-block;line-height:1.4">
+            ${entry.precio.toFixed(2)} €/u${plazo}
+            <br><small style="font-weight:700">${total.toFixed(2)} € total</small>
+          </span>
+        </td>`;
+      });
+      let mejor = '—';
+      if (row.precio_min !== null) {
+        const g = row.precios.find(e => e.precio === row.precio_min);
+        const prov = proveedores.find(p => p.id === g?.proveedor_id);
+        if (prov) mejor = `<span style="color:var(--success);font-weight:700">${prov.nombre}</span><br><small>${row.precio_min.toFixed(2)} €/u · ${(row.precio_min*row.cantidad).toFixed(2)} € total</small>`;
+      }
+      return `<tr><td><strong>${row.nombre}</strong></td><td>${row.cantidad}</td><td class="text-muted text-sm">${row.unidad}</td>${celdas.join('')}<td>${mejor}</td></tr>`;
+    }).join('');
+
+    // Fila totales por proveedor
+    const totalesCeldas = proveedores.map(prov => {
+      const total = comparacion.reduce((sum, row) => {
+        const e = row.precios.find(x => x.proveedor_id === prov.id);
+        return sum + (e?.precio ? e.precio * row.cantidad : 0);
+      }, 0);
+      const hayDatos = comparacion.some(row => row.precios.find(x => x.proveedor_id === prov.id)?.precio);
+      return `<td style="text-align:center">${hayDatos ? `<strong>${total.toFixed(2)} €</strong>` : '—'}</td>`;
+    }).join('');
+
+    const totalMinimo = Math.min(...proveedores.map(prov =>
+      comparacion.reduce((sum, row) => {
+        const e = row.precios.find(x => x.proveedor_id === prov.id);
+        return sum + (e?.precio ? e.precio * row.cantidad : 0);
+      }, 0)
+    ).filter(t => t > 0));
+
+    document.getElementById('tbody-compare').innerHTML = filas + `
+      <tr class="total-row">
+        <td colspan="3"><strong>TOTAL PEDIDO</strong></td>
+        ${totalesCeldas}
+        <td><strong style="color:var(--success)">${totalMinimo > 0 ? totalMinimo.toFixed(2) + ' €' : '—'}</strong></td>
+      </tr>
+    `;
+  }
+
+  // Sección adjudicación
+  renderAdjudicacion();
+
+  // Notas
+  if (proveedores.length === 0) {
+    document.getElementById('notas-section').classList.add('hidden');
+  } else {
+    document.getElementById('notas-content').innerHTML = proveedores.map(p => `
+      <div style="padding:.8rem 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <strong>${p.nombre}</strong>
+          <span class="text-muted text-sm">${p.fecha}</span>
+          ${p.adjudicada===true ? '<span class="badge badge-success">👑 Adjudicado</span>' : ''}
+          ${p.adjudicada===false ? '<span class="badge badge-danger">No adjudicado</span>' : ''}
+        </div>
+        <p class="text-muted text-sm mt-1">${p.notas || 'Sin notas.'}</p>
+      </div>
+    `).join('');
+  }
+}
+
+function renderAdjudicacion() {
+  const { proveedores, solicitud } = pageData;
+  const ganador = proveedores.find(p => p.adjudicada === true);
+  const badgeEl = document.getElementById('badge-adjudicacion');
+  const bodyEl = document.getElementById('body-adjudicacion');
+
+  if (proveedores.length === 0) { document.getElementById('card-adjudicacion').classList.add('hidden'); return; }
+
+  if (ganador) {
+    badgeEl.innerHTML = `<span class="badge badge-success">👑 ${ganador.nombre}</span>`;
+    let html = `
+      <div class="alert alert-success mb-2">
+        <strong>👑 Pedido adjudicado a ${ganador.nombre}</strong>${ganador.notas ? `<br><em>"${ganador.notas}"</em>` : ''}
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="desadjudicar(${ganador.cotizacion_id})">Quitar adjudicación</button>`;
+
+    if (!solicitud.recibida) {
+      html += `<button class="btn btn-success btn-sm" onclick="marcarRecibido()">✓ Marcar como recibido y valorar</button>`;
+    } else {
+      html += `<span class="badge badge-success" style="padding:.5rem .8rem">✓ Pedido recibido el ${solicitud.fecha_recepcion}</span>`;
+      html += `<button class="btn btn-secondary btn-sm" onclick="abrirModalValoracion(${ganador.id}, '${ganador.nombre}')">⭐ Valorar proveedor</button>`;
+    }
+    html += `</div>`;
+    bodyEl.innerHTML = html;
+  } else {
+    badgeEl.innerHTML = `<span class="badge badge-gray">Sin adjudicar</span>`;
+    bodyEl.innerHTML = `
+      <p class="text-muted text-sm mb-2">Selecciona el proveedor al que deseas adjudicar este pedido:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+        ${proveedores.map(p => `<button class="btn btn-secondary" onclick="adjudicar(${p.cotizacion_id}, '${p.nombre}')">Adjudicar a <strong style="margin-left:.3rem">${p.nombre}</strong></button>`).join('')}
+      </div>
+    `;
+  }
+}
+
+async function adjudicar(cotId, nombre) {
+  if (!confirm(`¿Adjudicar el pedido a ${nombre}?`)) return;
+  await fetch(`/api/cotizaciones/${cotId}/adjudicar`, { method: 'PATCH' });
+  await cargar();
+}
+
+async function desadjudicar(cotId) {
+  if (!confirm('¿Quitar la adjudicación?')) return;
+  await fetch(`/api/cotizaciones/${cotId}/desadjudicar`, { method: 'PATCH' });
+  await cargar();
+}
+
+async function generarOrden() {
+  const res = await fetch(`/api/solicitudes/${solicitudId}/orden-compra`, { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) { await cargar(); }
+}
+
+async function marcarRecibido() {
+  if (!confirm('¿Marcar el pedido como recibido?')) return;
+  await fetch(`/api/solicitudes/${solicitudId}/recibir`, { method: 'PATCH' });
+  const ganador = pageData.proveedores.find(p => p.adjudicada === true);
+  if (ganador) abrirModalValoracion(ganador.id, ganador.nombre);
+  else await cargar();
+}
+
+function abrirModalValoracion(provId, nombre) {
+  valorProvId = provId;
+  document.getElementById('val-proveedor-nombre').textContent = `Proveedor: ${nombre}`;
+  document.getElementById('val-alert').innerHTML = '';
+  document.querySelectorAll('input[name="calidad"], input[name="plazo"], input[name="precio"]').forEach(r => r.checked = false);
+  document.getElementById('val-comentario').value = '';
+  document.getElementById('modal-valoracion').classList.remove('hidden');
+}
+
+function cerrarModalVal() { document.getElementById('modal-valoracion').classList.add('hidden'); }
+
+async function enviarValoracion() {
+  const calidad = parseInt(document.querySelector('input[name="calidad"]:checked')?.value);
+  const plazo   = parseInt(document.querySelector('input[name="plazo"]:checked')?.value);
+  const precio  = parseInt(document.querySelector('input[name="precio"]:checked')?.value);
+  const alertEl = document.getElementById('val-alert');
+
+  if (!calidad || !plazo || !precio) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Puntúa las tres categorías.</div>`; return;
+  }
+  const btn = document.getElementById('btn-val-guardar');
+  btn.disabled = true;
+  const res = await fetch('/api/valoraciones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proveedor_id: valorProvId, solicitud_id: solicitudId, calidad, plazo, precio, comentario: document.getElementById('val-comentario').value })
+  });
+  if (res.ok) {
+    cerrarModalVal();
+    await cargar();
+  } else {
+    const d = await res.json();
+    alertEl.innerHTML = `<div class="alert alert-danger">${d.error}</div>`;
+  }
+  btn.disabled = false;
+}
+
+async function cambiarEstado(nuevoEstado) {
+  await fetch(`/api/solicitudes/${solicitudId}/estado`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ estado: nuevoEstado }) });
+  await cargar();
+}
+
+function exportarCSV() {
+  const { solicitud, proveedores, comparacion } = pageData;
+  const sep = ';';
+  const filas = [
+    ['Solicitud', solicitud.titulo].join(sep),
+    ['Fecha límite', solicitud.fecha_limite].join(sep),
+    [''],
+    ['Producto', 'Cantidad', 'Unidad', ...proveedores.map(p => `${p.nombre} (€/u)`), ...proveedores.map(p => `${p.nombre} Total`), 'Mejor precio'].join(sep)
+  ];
+  comparacion.forEach(row => {
+    const precios = proveedores.map(p => { const e = row.precios.find(x => x.proveedor_id === p.id); return e?.precio != null ? e.precio.toFixed(2)+' €' : '—'; });
+    const totales = proveedores.map(p => { const e = row.precios.find(x => x.proveedor_id === p.id); return e?.precio != null ? (e.precio*row.cantidad).toFixed(2)+' €' : '—'; });
+    const g = proveedores.find(p => { const e = row.precios.find(x => x.proveedor_id === p.id); return e?.precio === row.precio_min; });
+    filas.push([row.nombre, row.cantidad, row.unidad, ...precios, ...totales, g?.nombre||'—'].join(sep));
+  });
+  const totalesRow = ['TOTAL PEDIDO', '', '', ...Array(proveedores.length).fill(''), ...proveedores.map(prov => {
+    const t = comparacion.reduce((s,r) => { const e = r.precios.find(x=>x.proveedor_id===prov.id); return s+(e?.precio?e.precio*r.cantidad:0); }, 0);
+    return t > 0 ? t.toFixed(2)+' €' : '—';
+  }), ''].join(sep);
+  filas.push('', totalesRow);
+  const csv = '﻿' + filas.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
+  a.download = `comparativa-${solicitudId}.csv`;
+  a.click();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

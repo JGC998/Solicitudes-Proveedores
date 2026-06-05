@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo de productos — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item active">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Catálogo de productos</h1>
+        <p class="page-subtitle">Gestiona los productos disponibles para solicitudes de presupuesto</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">＋ Nuevo producto</button>
+    </div>
+
+    <div class="page-body">
+      <div id="alert-area"></div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+
+      <div id="content" class="hidden card">
+        <div class="card-header">
+          <span class="card-title" id="count-label">— productos</span>
+          <input type="text" id="buscar" class="form-control" style="width:220px"
+            placeholder="Buscar por nombre..." oninput="filtrar()">
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Descripción</th>
+                <th>Unidad</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-productos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal crear / editar -->
+<div id="modal-producto" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px">
+    <h2 class="modal-title" id="modal-titulo">Nuevo producto</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label class="form-label">Nombre *</label>
+      <input id="campo-nombre" type="text" class="form-control" placeholder="Ej: Tornillos M8 x 30mm">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <input id="campo-desc" type="text" class="form-control" placeholder="Breve descripción del producto">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoría</label>
+      <select id="campo-categoria" class="form-control">
+        <option value="">Sin categoría</option>
+        <option value="Oficina">Oficina</option>
+        <option value="Componentes">Componentes</option>
+        <option value="Informática">Informática</option>
+        <option value="EPI">EPI</option>
+        <option value="Limpieza">Limpieza</option>
+        <option value="Otros">Otros</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Unidad de medida *</label>
+      <input id="campo-unidad" type="text" class="form-control" placeholder="Ej: unidad, caja/100u, resma, rollo...">
+      <p class="form-hint">Cómo se mide o vende este producto.</p>
+    </div>
+    <div id="modal-alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardar()">Guardar producto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmar eliminar -->
+<div id="modal-delete" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 class="modal-title">¿Eliminar producto?</h2>
+    <p class="modal-body">Si este producto está en solicitudes existentes, sus referencias quedarán sin nombre. Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalDelete()">Cancelar</button>
+      <button class="btn btn-danger" id="btn-delete-confirm" onclick="confirmarDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let productos = [];
+let deleteId = null;
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await cargarProductos();
+}
+
+async function cargarProductos() {
+  const res = await fetch('/api/productos');
+  productos = await res.json();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+  renderTabla();
+}
+
+function filtrar() {
+  renderTabla();
+}
+
+function renderTabla() {
+  const q = document.getElementById('buscar').value.toLowerCase();
+  const lista = productos.filter(p => p.nombre.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q));
+  document.getElementById('count-label').textContent = `${lista.length} producto(s)`;
+
+  const tbody = document.getElementById('tabla-productos');
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-title">No hay productos con ese criterio</div></div></td></tr>`;
+    return;
+  }
+
+  const catClass = { Oficina:'cat-Oficina', Componentes:'cat-Componentes', 'Informática':'cat-Informática', EPI:'cat-EPI', Limpieza:'cat-Limpieza', Otros:'cat-Otros' };
+  tbody.innerHTML = lista.map(p => `
+    <tr>
+      <td class="text-muted text-sm">#${p.id}</td>
+      <td><strong>${p.nombre}</strong></td>
+      <td>${p.categoria ? `<span class="cat-pill ${catClass[p.categoria]||'cat-Otros'}">${p.categoria}</span>` : '<span class="text-muted text-sm">—</span>'}</td>
+      <td class="text-muted">${p.descripcion || '—'}</td>
+      <td><span class="badge badge-info">${p.unidad}</span></td>
+      <td style="display:flex;gap:.4rem">
+        <button class="btn btn-secondary btn-sm" onclick="abrirModal(${p.id})">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="pedirDelete(${p.id})">Eliminar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirModal(id) {
+  document.getElementById('modal-alert').innerHTML = '';
+  document.getElementById('btn-guardar').disabled = false;
+  if (id) {
+    const p = productos.find(x => x.id === id);
+    document.getElementById('modal-titulo').textContent = 'Editar producto';
+    document.getElementById('edit-id').value = id;
+    document.getElementById('campo-nombre').value = p.nombre;
+    document.getElementById('campo-desc').value = p.descripcion || '';
+    document.getElementById('campo-categoria').value = p.categoria || '';
+    document.getElementById('campo-unidad').value = p.unidad;
+  } else {
+    document.getElementById('modal-titulo').textContent = 'Nuevo producto';
+    document.getElementById('edit-id').value = '';
+    document.getElementById('campo-nombre').value = '';
+    document.getElementById('campo-desc').value = '';
+    document.getElementById('campo-categoria').value = '';
+    document.getElementById('campo-unidad').value = '';
+  }
+  document.getElementById('modal-producto').classList.remove('hidden');
+  document.getElementById('campo-nombre').focus();
+}
+
+function cerrarModal() {
+  document.getElementById('modal-producto').classList.add('hidden');
+}
+
+async function guardar() {
+  const nombre = document.getElementById('campo-nombre').value.trim();
+  const descripcion = document.getElementById('campo-desc').value.trim();
+  const categoria = document.getElementById('campo-categoria').value;
+  const unidad = document.getElementById('campo-unidad').value.trim();
+  const editId = document.getElementById('edit-id').value;
+  const alertEl = document.getElementById('modal-alert');
+
+  if (!nombre || !unidad) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Nombre y unidad son obligatorios.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+
+  const url = editId ? `/api/productos/${editId}` : '/api/productos';
+  const method = editId ? 'PATCH' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, descripcion, categoria, unidad })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    btn.disabled = false;
+    return;
+  }
+
+  if (editId) {
+    const idx = productos.findIndex(p => p.id === parseInt(editId));
+    if (idx !== -1) productos[idx] = data;
+  } else {
+    productos.push(data);
+  }
+
+  cerrarModal();
+  renderTabla();
+  mostrarAlertaGlobal(`Producto ${editId ? 'actualizado' : 'creado'} correctamente.`, 'success');
+}
+
+function pedirDelete(id) {
+  deleteId = id;
+  document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+function cerrarModalDelete() {
+  document.getElementById('modal-delete').classList.add('hidden');
+  deleteId = null;
+}
+
+async function confirmarDelete() {
+  if (!deleteId) return;
+  const res = await fetch(`/api/productos/${deleteId}`, { method: 'DELETE' });
+  if (res.ok) {
+    productos = productos.filter(p => p.id !== deleteId);
+    renderTabla();
+    mostrarAlertaGlobal('Producto eliminado.', 'warning');
+  }
+  cerrarModalDelete();
+}
+
+function mostrarAlertaGlobal(msg, tipo) {
+  const el = document.getElementById('alert-area');
+  el.innerHTML = `<div class="alert alert-${tipo}">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

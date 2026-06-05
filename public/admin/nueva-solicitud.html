@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva solicitud — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item active">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Nueva solicitud de presupuesto</h1>
+        <p class="page-subtitle">Selecciona los productos y define el plazo de respuesta</p>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="breadcrumb">
+        <a href="/admin/solicitudes.html">Solicitudes</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Nueva solicitud</span>
+      </div>
+
+      <div id="alert-area"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:1.5rem;align-items:start">
+
+        <!-- Formulario principal -->
+        <div>
+          <div class="card mb-2">
+            <div class="card-header"><span class="card-title">Información general</span></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Título de la solicitud *</label>
+                <input id="titulo" type="text" class="form-control" placeholder="Ej: Material de oficina Q2 2025">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Descripción</label>
+                <textarea id="descripcion" class="form-control" rows="3"
+                  placeholder="Contexto adicional para los proveedores..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha límite de respuesta *</label>
+                <input id="fecha-limite" type="date" class="form-control" style="max-width:220px">
+              </div>
+            </div>
+          </div>
+
+          <!-- Proveedores invitados -->
+          <div class="card mb-2">
+            <div class="card-header">
+              <span class="card-title">Proveedores a invitar</span>
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:500;cursor:pointer">
+                <input type="checkbox" id="todos-proveedores" checked
+                  style="accent-color:var(--primary)" onchange="toggleTodosProveedores()">
+                Invitar a todos
+              </label>
+            </div>
+            <div id="lista-proveedores-invitar" class="hidden card-body" style="padding-top:.6rem">
+              <p class="text-muted text-sm mb-2">Selecciona los proveedores que recibirán esta solicitud:</p>
+              <div id="checks-proveedores"></div>
+            </div>
+          </div>
+
+          <!-- Selección de productos -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Productos solicitados</span>
+              <div style="display:flex;align-items:center;gap:.6rem">
+                <span class="badge badge-info" id="productos-count">0 seleccionados</span>
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalProducto()">
+                  ＋ Crear producto
+                </button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:0">
+              <div class="product-selector">
+                <div class="product-selector-search">
+                  <input type="text" id="search-productos" class="form-control"
+                    placeholder="Buscar producto..." oninput="renderProductList()">
+                </div>
+                <div class="product-list-check" id="product-list">
+                  <div class="loading" style="padding:1.5rem"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen lateral -->
+        <div>
+          <div class="card" style="position:sticky;top:1rem">
+            <div class="card-header"><span class="card-title">Resumen</span></div>
+            <div class="card-body">
+              <div id="resumen-content">
+                <p class="text-muted text-sm">Selecciona productos para ver el resumen</p>
+              </div>
+              <div class="divider"></div>
+              <button id="btn-submit" class="btn btn-primary w-full" disabled>
+                Crear solicitud
+              </button>
+              <a href="/admin/solicitudes.html" class="btn btn-secondary w-full mt-1">Cancelar</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: crear producto al vuelo -->
+<div id="modal-producto" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <h2 class="modal-title">Crear nuevo producto</h2>
+    <p class="modal-body" style="margin-bottom:1rem">El producto se añadirá al catálogo y se seleccionará automáticamente.</p>
+    <div class="form-group">
+      <label class="form-label">Nombre *</label>
+      <input id="np-nombre" type="text" class="form-control" placeholder="Ej: Cable HDMI 4K 3m">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <input id="np-desc" type="text" class="form-control" placeholder="Breve descripción">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Unidad de medida *</label>
+      <input id="np-unidad" type="text" class="form-control" placeholder="Ej: unidad, caja/100u, pack/4u">
+    </div>
+    <div id="np-alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
+      <button class="btn btn-primary" id="np-btn" onclick="crearProducto()">Crear y seleccionar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let productos = [];
+let proveedores = [];
+let selected = {}; // producto_id → cantidad
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('fecha-limite').min = tomorrow.toISOString().split('T')[0];
+
+  document.getElementById('btn-submit').addEventListener('click', submitForm);
+
+  await Promise.all([cargarProductos(), cargarProveedores()]);
+}
+
+async function cargarProductos() {
+  const res = await fetch('/api/productos');
+  productos = await res.json();
+  renderProductList();
+}
+
+async function cargarProveedores() {
+  const res = await fetch('/api/proveedores');
+  proveedores = (await res.json()).filter(p => p.activo !== false && !p.pendiente);
+  renderChecksProveedores();
+}
+
+function toggleTodosProveedores() {
+  const todos = document.getElementById('todos-proveedores').checked;
+  document.getElementById('lista-proveedores-invitar').classList.toggle('hidden', todos);
+}
+
+function renderChecksProveedores() {
+  document.getElementById('checks-proveedores').innerHTML = proveedores.map(p => `
+    <label style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;cursor:pointer">
+      <input type="checkbox" class="prov-check" value="${p.id}" checked
+        style="accent-color:var(--primary);width:15px;height:15px">
+      <span class="text-sm fw-bold">${p.nombre}</span>
+      <span class="text-muted text-sm">${p.email}</span>
+    </label>
+  `).join('');
+}
+
+function getProveedoresInvitados() {
+  if (document.getElementById('todos-proveedores').checked) return [];
+  return Array.from(document.querySelectorAll('.prov-check:checked')).map(c => parseInt(c.value));
+}
+
+function renderProductList() {
+  const q = document.getElementById('search-productos').value.toLowerCase();
+  const list = document.getElementById('product-list');
+  const filtered = productos.filter(p =>
+    p.nombre.toLowerCase().includes(q) || (p.descripcion||'').toLowerCase().includes(q)
+  );
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state" style="padding:1.5rem">
+        <div class="empty-state-title">No hay productos con ese nombre.</div>
+        <button class="btn btn-primary btn-sm mt-1" onclick="abrirModalProducto()">
+          ＋ Crear "${document.getElementById('search-productos').value}"
+        </button>
+      </div>`;
+    return;
+  }
+
+  // Agrupar por categoría
+  const grupos = {};
+  filtered.forEach(p => {
+    const cat = p.categoria || 'Otros';
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push(p);
+  });
+
+  const catOrder = ['Oficina','Componentes','Informática','EPI','Limpieza','Otros'];
+  const cats = [...new Set([...catOrder.filter(c => grupos[c]), ...Object.keys(grupos).filter(c => !catOrder.includes(c))])];
+
+  list.innerHTML = cats.map(cat => `
+    <div style="padding:.4rem 1rem .1rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);background:#f8fafc;border-bottom:1px solid var(--border)">${cat}</div>
+    ${grupos[cat].map(p => `
+      <div class="product-check-item">
+        <input type="checkbox" id="chk-${p.id}" ${selected[p.id] !== undefined ? 'checked' : ''}
+          onchange="toggleProduct(${p.id}, this.checked)">
+        <label for="chk-${p.id}" style="flex:1;cursor:pointer">
+          <div class="product-check-name">${p.nombre}</div>
+          <div class="product-check-unit">${p.unidad}${p.descripcion ? ' · ' + p.descripcion : ''}</div>
+        </label>
+        <input type="number" class="product-check-qty" id="qty-${p.id}"
+          value="${selected[p.id] || 1}" min="1"
+          ${selected[p.id] === undefined ? 'disabled' : ''}
+          onchange="updateQty(${p.id}, this.value)"
+          placeholder="Cant.">
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function toggleProduct(id, checked) {
+  if (checked) {
+    const qty = document.getElementById(`qty-${id}`);
+    selected[id] = parseInt(qty?.value) || 1;
+    if (qty) qty.disabled = false;
+  } else {
+    delete selected[id];
+    const qty = document.getElementById(`qty-${id}`);
+    if (qty) { qty.disabled = true; qty.value = 1; }
+  }
+  updateResumen();
+}
+
+function updateQty(id, val) {
+  if (selected[id] !== undefined) selected[id] = parseInt(val) || 1;
+}
+
+function updateResumen() {
+  const count = Object.keys(selected).length;
+  document.getElementById('productos-count').textContent = `${count} seleccionados`;
+  document.getElementById('btn-submit').disabled = count === 0;
+
+  const resumen = document.getElementById('resumen-content');
+  if (count === 0) {
+    resumen.innerHTML = `<p class="text-muted text-sm">Selecciona productos para ver el resumen</p>`;
+    return;
+  }
+
+  resumen.innerHTML = Object.entries(selected).map(([id, qty]) => {
+    const prod = productos.find(p => p.id === parseInt(id));
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--border)">
+        <span class="text-sm">${prod?.nombre || 'Producto'}</span>
+        <span class="badge badge-info">${qty} ${prod?.unidad || 'u'}</span>
+      </div>`;
+  }).join('') + `<p class="text-muted text-sm mt-1">Total: ${count} producto(s)</p>`;
+}
+
+// ── Modal crear producto al vuelo ─────────────────────────────────────────────
+function abrirModalProducto() {
+  const busqueda = document.getElementById('search-productos').value.trim();
+  document.getElementById('np-nombre').value = busqueda;
+  document.getElementById('np-desc').value = '';
+  document.getElementById('np-unidad').value = '';
+  document.getElementById('np-alert').innerHTML = '';
+  document.getElementById('np-btn').disabled = false;
+  document.getElementById('modal-producto').classList.remove('hidden');
+  document.getElementById('np-nombre').focus();
+}
+
+function cerrarModalProducto() {
+  document.getElementById('modal-producto').classList.add('hidden');
+}
+
+async function crearProducto() {
+  const nombre = document.getElementById('np-nombre').value.trim();
+  const descripcion = document.getElementById('np-desc').value.trim();
+  const unidad = document.getElementById('np-unidad').value.trim();
+  const alertEl = document.getElementById('np-alert');
+
+  if (!nombre || !unidad) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Nombre y unidad son obligatorios.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('np-btn');
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+
+  const res = await fetch('/api/productos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, descripcion, unidad })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Crear y seleccionar';
+    return;
+  }
+
+  // Añadir al array local y auto-seleccionar
+  productos.push(data);
+  selected[data.id] = 1;
+
+  cerrarModalProducto();
+  document.getElementById('search-productos').value = '';
+  renderProductList();
+  updateResumen();
+
+  // Pequeña confirmación visual
+  setTimeout(() => {
+    const chk = document.getElementById(`chk-${data.id}`);
+    if (chk) chk.closest('.product-check-item').style.background = 'var(--success-bg)';
+    setTimeout(() => {
+      if (chk) chk.closest('.product-check-item').style.background = '';
+    }, 1500);
+  }, 50);
+
+  btn.textContent = 'Crear y seleccionar';
+}
+
+// ── Enviar solicitud ──────────────────────────────────────────────────────────
+async function submitForm() {
+  const titulo = document.getElementById('titulo').value.trim();
+  const descripcion = document.getElementById('descripcion').value.trim();
+  const fechaLimite = document.getElementById('fecha-limite').value;
+  const alertEl = document.getElementById('alert-area');
+
+  if (!titulo) { alertEl.innerHTML = `<div class="alert alert-danger">El título es obligatorio.</div>`; return; }
+  if (!fechaLimite) { alertEl.innerHTML = `<div class="alert alert-danger">La fecha límite es obligatoria.</div>`; return; }
+  if (Object.keys(selected).length === 0) { alertEl.innerHTML = `<div class="alert alert-danger">Selecciona al menos un producto.</div>`; return; }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+
+  const res = await fetch('/api/solicitudes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      titulo,
+      descripcion,
+      fecha_limite: fechaLimite,
+      proveedores_invitados: getProveedoresInvitados(),
+      productos: Object.entries(selected).map(([id, qty]) => ({
+        producto_id: parseInt(id),
+        cantidad: qty
+      }))
+    })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Crear solicitud';
+    return;
+  }
+
+  window.location.href = `/admin/detalle.html?id=${data.id}`;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

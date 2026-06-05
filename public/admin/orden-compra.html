@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orden de compra — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body { background: #f1f5f9; }
+    .oc-wrapper { max-width: 800px; margin: 2rem auto; padding: 1rem; }
+    .oc-doc { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 3rem; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .oc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 3px solid #2563eb; padding-bottom: 1.5rem; }
+    .oc-logo { font-size: 1.4rem; font-weight: 800; color: #1e293b; }
+    .oc-logo-sub { font-size: .85rem; color: #64748b; margin-top: .2rem; }
+    .oc-num { text-align: right; }
+    .oc-num .num { font-size: 1.5rem; font-weight: 800; color: #2563eb; }
+    .oc-num .fecha { color: #64748b; font-size: .85rem; }
+    .oc-section { margin-bottom: 1.8rem; }
+    .oc-section-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-bottom: .6rem; }
+    .oc-prov-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem 1.2rem; }
+    .oc-prov-name { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+    .oc-prov-email { color: #64748b; font-size: .88rem; }
+    table.oc-table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+    .oc-table thead th { background: #1e293b; color: #fff; padding: .7rem 1rem; text-align: left; font-size: .8rem; font-weight: 600; }
+    .oc-table thead th:last-child, .oc-table thead th:nth-last-child(2) { text-align: right; }
+    .oc-table tbody td { padding: .75rem 1rem; border-bottom: 1px solid #e2e8f0; font-size: .9rem; }
+    .oc-table tbody td:last-child, .oc-table tbody td:nth-last-child(2) { text-align: right; }
+    .oc-table tfoot td { padding: .65rem 1rem; font-weight: 700; font-size: .95rem; }
+    .oc-total-row { background: #2563eb; color: #fff; }
+    .oc-total-row td { border-top: 2px solid #1d4ed8; }
+    .oc-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; border-top: 1px solid #e2e8f0; padding-top: 2rem; }
+    .oc-sign-line { border-top: 1px solid #1e293b; padding-top: .4rem; font-size: .8rem; color: #64748b; margin-top: 2rem; }
+    .oc-footer { text-align: center; margin-top: 2rem; font-size: .78rem; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+    .no-print-bar { display: flex; gap: .6rem; justify-content: center; margin-bottom: 1.5rem; }
+    @media print {
+      body { background: #fff; }
+      .no-print-bar { display: none; }
+      .oc-wrapper { margin: 0; padding: 0; }
+      .oc-doc { border: none; border-radius: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="oc-wrapper">
+  <div class="no-print-bar">
+    <a href="javascript:history.back()" class="btn btn-secondary">← Volver</a>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  </div>
+
+  <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+
+  <div id="oc-doc" class="oc-doc hidden">
+    <div class="oc-header">
+      <div>
+        <div class="oc-logo">RFQ Manager</div>
+        <div class="oc-logo-sub" id="oc-empresa">Empresa Ejemplo SA</div>
+      </div>
+      <div class="oc-num">
+        <div class="num" id="oc-numero">OC-2026-0000</div>
+        <div class="fecha">Fecha: <strong id="oc-fecha"></strong></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem">
+      <div class="oc-section">
+        <div class="oc-section-title">Proveedor adjudicado</div>
+        <div class="oc-prov-box">
+          <div class="oc-prov-name" id="oc-prov-nombre">—</div>
+          <div class="oc-prov-email" id="oc-prov-email">—</div>
+        </div>
+      </div>
+      <div class="oc-section">
+        <div class="oc-section-title">Detalles del pedido</div>
+        <div class="oc-prov-box">
+          <div style="font-size:.85rem;color:#64748b;margin-bottom:.3rem">Referencia solicitud</div>
+          <div class="fw-bold" id="oc-sol-titulo">—</div>
+          <div style="font-size:.85rem;color:#64748b;margin-top:.5rem">Notas del proveedor</div>
+          <div class="text-sm" id="oc-notas" style="color:#475569">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="oc-section">
+      <div class="oc-section-title">Productos y precios</div>
+      <table class="oc-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Producto</th>
+            <th>Unidad</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="oc-tabla-body"></tbody>
+        <tfoot id="oc-tabla-foot"></tfoot>
+      </table>
+    </div>
+
+    <div class="oc-signatures">
+      <div>
+        <div style="font-weight:700;margin-bottom:.3rem">Autorizado por</div>
+        <div class="oc-sign-line">Firma y sello del comprador</div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:.3rem">Aceptado por</div>
+        <div class="oc-sign-line">Firma y sello del proveedor</div>
+      </div>
+    </div>
+
+    <div class="oc-footer">
+      Documento generado por RFQ Manager · Este documento constituye una orden de compra formal.
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const solicitudId = parseInt(params.get('id'));
+
+async function init() {
+  if (!solicitudId) return;
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('oc-empresa').textContent = user.nombre;
+  } catch { return (window.location.href = '/login.html'); }
+
+  const res = await fetch(`/api/analisis/solicitud/${solicitudId}`);
+  if (!res.ok) return;
+  const { solicitud, proveedores, comparacion } = await res.json();
+
+  const ganador = proveedores.find(p => p.adjudicada === true);
+  if (!ganador) { document.getElementById('loading').textContent = 'Esta solicitud no tiene proveedor adjudicado.'; return; }
+
+  // Rellenar documento
+  document.getElementById('oc-numero').textContent = solicitud.num_orden || `OC-${new Date().getFullYear()}-${String(solicitudId).padStart(4,'0')}`;
+  document.getElementById('oc-fecha').textContent = solicitud.fecha_orden || new Date().toLocaleDateString('es-ES');
+  document.getElementById('oc-prov-nombre').textContent = ganador.nombre;
+  document.getElementById('oc-prov-email').textContent = ganador.email || '';
+  document.getElementById('oc-sol-titulo').textContent = solicitud.titulo;
+  document.getElementById('oc-notas').textContent = ganador.notas || 'Sin notas.';
+
+  let total = 0;
+  const rows = comparacion.map((row, i) => {
+    const entry = row.precios.find(e => e.proveedor_id === ganador.id);
+    const precio = entry?.precio ?? null;
+    const subtotal = precio !== null ? precio * row.cantidad : null;
+    if (subtotal) total += subtotal;
+    return `
+      <tr>
+        <td style="color:#94a3b8">${i+1}</td>
+        <td><strong>${row.nombre}</strong></td>
+        <td style="color:#64748b">${row.unidad}</td>
+        <td style="text-align:right">${row.cantidad}</td>
+        <td style="text-align:right">${precio !== null ? precio.toFixed(2)+' €' : '—'}</td>
+        <td style="text-align:right">${subtotal !== null ? subtotal.toFixed(2)+' €' : '—'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('oc-tabla-body').innerHTML = rows;
+  document.getElementById('oc-tabla-foot').innerHTML = `
+    <tr><td colspan="5" style="text-align:right;color:#64748b">Subtotal</td><td style="text-align:right">${total.toFixed(2)} €</td></tr>
+    <tr class="oc-total-row"><td colspan="5" style="text-align:right">TOTAL PEDIDO</td><td style="text-align:right;font-size:1.1rem">${total.toFixed(2)} €</td></tr>
+  `;
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('oc-doc').classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

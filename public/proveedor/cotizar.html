@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizar — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-label">Proveedor</p>
+      <a href="/proveedor/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Mi panel
+      </a>
+      <a href="/proveedor/historial.html" class="nav-item">
+        <span class="nav-icon">📋</span> Mis cotizaciones
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">P</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Proveedor</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="page-title">Cotizar solicitud</h1>
+        <p class="page-subtitle" id="page-subtitle">Introduce tus precios para cada producto</p>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="breadcrumb">
+        <a href="/proveedor/dashboard.html">Mi panel</a>
+        <span class="breadcrumb-sep">›</span>
+        <span id="bc-title">Cotizar</span>
+      </div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+      <div id="content" class="hidden">
+
+        <div id="alert-area"></div>
+        <div id="alert-cerrada" class="alert alert-warning hidden">
+          Esta solicitud está cerrada. Ya no se aceptan nuevas cotizaciones.
+        </div>
+        <div id="alert-ya-cotizado" class="alert alert-info hidden">
+          Ya enviaste una cotización para esta solicitud. Puedes modificarla y volver a enviar.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start">
+
+          <!-- Formulario precios -->
+          <div>
+            <!-- Info solicitud -->
+            <div class="card mb-2">
+              <div class="card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                  <div><div class="kpi-label">Solicitud</div><div id="info-titulo" class="fw-bold"></div></div>
+                  <div><div class="kpi-label">Fecha límite</div><div id="info-limite" class="fw-bold"></div></div>
+                  <div><div class="kpi-label">Estado</div><div id="info-estado"></div></div>
+                </div>
+                <div id="info-desc" class="text-muted text-sm mt-2"></div>
+              </div>
+            </div>
+
+            <!-- Líneas de productos -->
+            <div class="card">
+              <div class="card-header"><span class="card-title">Precios por producto</span></div>
+              <div id="lineas-container"></div>
+            </div>
+
+            <!-- Notas -->
+            <div class="card mt-2">
+              <div class="card-header"><span class="card-title">Notas adicionales</span></div>
+              <div class="card-body">
+                <textarea id="notas" class="form-control" rows="3"
+                  placeholder="Condiciones de pago, descuentos, plazo de entrega global, etc."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen lateral -->
+          <div>
+            <div class="card" style="position:sticky;top:1rem">
+              <div class="card-header"><span class="card-title">Resumen de tu cotización</span></div>
+              <div class="card-body">
+                <div id="resumen-lineas"></div>
+                <div class="divider"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                  <span class="fw-bold">Total estimado</span>
+                  <span class="fw-bold" id="total-estimado" style="font-size:1.1rem;color:var(--primary)">0.00 €</span>
+                </div>
+                <button id="btn-submit" class="btn btn-success w-full" disabled>
+                  Enviar cotización
+                </button>
+                <a href="/proveedor/dashboard.html" class="btn btn-secondary w-full mt-1">Cancelar</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const solicitudId = parseInt(params.get('id'));
+let solicitudData = null;
+let esCerrada = false;
+
+async function init() {
+  if (!solicitudId) return (window.location.href = '/proveedor/dashboard.html');
+
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'proveedor') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('proveedor');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await loadSolicitud();
+}
+
+async function loadSolicitud() {
+  // Cargar solicitud y cotizaciones propias en paralelo
+  const [solicRes, cotRes] = await Promise.all([
+    fetch(`/api/solicitudes/${solicitudId}`),
+    fetch('/api/cotizaciones')
+  ]);
+
+  if (!solicRes.ok) return (window.location.href = '/proveedor/dashboard.html');
+
+  const solicitud = await solicRes.json();
+  const todasCots = await cotRes.json();
+  const miCotizacion = todasCots.find(c => c.solicitud?.id === solicitudId);
+
+  solicitudData = solicitud;
+  esCerrada = solicitud.estado === 'cerrada';
+
+  // Info
+  document.getElementById('page-title').textContent = solicitud.titulo;
+  document.getElementById('bc-title').textContent = solicitud.titulo;
+  document.getElementById('info-titulo').textContent = solicitud.titulo;
+  document.getElementById('info-limite').textContent = solicitud.fecha_limite;
+  document.getElementById('info-estado').innerHTML = esCerrada
+    ? '<span class="badge badge-gray">Cerrada</span>'
+    : '<span class="badge badge-success">Activa</span>';
+  if (solicitud.descripcion)
+    document.getElementById('info-desc').textContent = solicitud.descripcion;
+
+  // Alertas
+  if (esCerrada) document.getElementById('alert-cerrada').classList.remove('hidden');
+  if (miCotizacion) document.getElementById('alert-ya-cotizado').classList.remove('hidden');
+
+  // Renderizar líneas
+  renderLineas(solicitud.productos, miCotizacion);
+
+  if (!esCerrada) {
+    document.getElementById('btn-submit').disabled = false;
+    document.getElementById('btn-submit').addEventListener('click', submitCotizacion);
+  }
+
+  if (miCotizacion?.notas) document.getElementById('notas').value = miCotizacion.notas;
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+  updateResumen();
+}
+
+function renderLineas(productos, miCotizacion) {
+  const container = document.getElementById('lineas-container');
+  container.innerHTML = productos.map(p => {
+    const linea = miCotizacion?.lineas?.find(l => l.producto_id === p.producto?.id);
+    return `
+      <div class="quote-line">
+        <div>
+          <div class="quote-line-name">${p.producto?.nombre || 'Producto'}</div>
+          <div class="quote-line-detail">${p.cantidad} × ${p.producto?.unidad || 'u'} · ${p.producto?.descripcion || ''}</div>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:.75rem">Precio unitario (€) *</label>
+          <input type="number" class="form-control precio-input"
+            id="precio-${p.producto_id}"
+            data-id="${p.producto_id}"
+            data-cantidad="${p.cantidad}"
+            value="${linea ? linea.precio_unitario : ''}"
+            min="0.01" step="0.01" placeholder="0.00"
+            ${esCerrada ? 'disabled' : ''}
+            oninput="updateResumen()">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:.75rem">Plazo (días)</label>
+          <input type="number" class="form-control"
+            id="plazo-${p.producto_id}"
+            value="${linea ? linea.plazo_entrega : ''}"
+            min="1" step="1" placeholder="días"
+            ${esCerrada ? 'disabled' : ''}>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateResumen() {
+  const inputs = document.querySelectorAll('.precio-input');
+  let total = 0;
+  let allFilled = true;
+
+  const resumenHTML = Array.from(inputs).map(inp => {
+    const id = inp.dataset.id;
+    const cant = parseInt(inp.dataset.cantidad);
+    const precio = parseFloat(inp.value);
+    const prod = solicitudData.productos.find(p => p.producto_id === parseInt(id));
+    const nombre = prod?.producto?.nombre || 'Producto';
+
+    if (!inp.value || isNaN(precio)) {
+      allFilled = false;
+      return `<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span class="text-sm">${nombre}</span><span class="text-muted text-sm">Sin precio</span></div>`;
+    }
+
+    const subtotal = precio * cant;
+    total += subtotal;
+    return `<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border)"><span class="text-sm">${nombre} ×${cant}</span><span class="text-sm fw-bold">${subtotal.toFixed(2)} €</span></div>`;
+  }).join('');
+
+  document.getElementById('resumen-lineas').innerHTML = resumenHTML;
+  document.getElementById('total-estimado').textContent = total.toFixed(2) + ' €';
+  if (!esCerrada)
+    document.getElementById('btn-submit').disabled = !allFilled;
+}
+
+async function submitCotizacion() {
+  const lineas = [];
+  let valid = true;
+  const alert = document.getElementById('alert-area');
+  alert.innerHTML = '';
+
+  solicitudData.productos.forEach(p => {
+    const precio = parseFloat(document.getElementById(`precio-${p.producto_id}`)?.value);
+    const plazo = parseInt(document.getElementById(`plazo-${p.producto_id}`)?.value);
+    if (!precio || precio <= 0) { valid = false; return; }
+    lineas.push({
+      producto_id: p.producto_id,
+      precio_unitario: precio,
+      plazo_entrega: plazo || null
+    });
+  });
+
+  if (!valid || lineas.length !== solicitudData.productos.length) {
+    alert.innerHTML = `<div class="alert alert-danger">Rellena el precio de todos los productos.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  const res = await fetch('/api/cotizaciones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      solicitud_id: solicitudId,
+      lineas,
+      notas: document.getElementById('notas').value
+    })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Enviar cotización';
+    return;
+  }
+
+  alert.innerHTML = `<div class="alert alert-success">✓ Cotización enviada correctamente.</div>`;
+  btn.textContent = '✓ Enviada';
+  document.getElementById('alert-ya-cotizado').classList.remove('hidden');
+  setTimeout(() => { window.location.href = '/proveedor/historial.html'; }, 1500);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

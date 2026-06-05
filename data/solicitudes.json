@@ -1,0 +1,109 @@
+[
+  {
+    "id": 1,
+    "titulo": "Material de oficina Q1 2025",
+    "descripcion": "Reposición trimestral de material de oficina para todas las sedes.",
+    "fecha_creacion": "2025-01-10",
+    "fecha_limite": "2025-01-25",
+    "estado": "cerrada",
+    "productos": [
+      {
+        "producto_id": 4,
+        "cantidad": 500
+      },
+      {
+        "producto_id": 5,
+        "cantidad": 50
+      },
+      {
+        "producto_id": 7,
+        "cantidad": 100
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "titulo": "Componentes producción - Mayo 2025",
+    "descripcion": "Necesitamos stock de componentes mecánicos para la línea de producción del Q2.",
+    "fecha_creacion": "2025-05-01",
+    "fecha_limite": "2025-05-20",
+    "estado": "activa",
+    "productos": [
+      {
+        "producto_id": 1,
+        "cantidad": 200
+      },
+      {
+        "producto_id": 2,
+        "cantidad": 200
+      },
+      {
+        "producto_id": 8,
+        "cantidad": 50
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "titulo": "Equipamiento informático periféricos",
+    "descripcion": "Cables y accesorios para la renovación de puestos de trabajo.",
+    "fecha_creacion": "2025-05-15",
+    "fecha_limite": "2025-06-05",
+    "estado": "activa",
+    "productos": [
+      {
+        "producto_id": 3,
+        "cantidad": 30
+      },
+      {
+        "producto_id": 6,
+        "cantidad": 30
+      },
+      {
+        "producto_id": 10,
+        "cantidad": 80
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "titulo": "Material oficina",
+    "descripcion": "Cotización precio material oficina",
+    "fecha_creacion": "2026-05-28",
+    "fecha_limite": "2026-06-10",
+    "estado": "activa",
+    "productos": [
+      {
+        "producto_id": 1,
+        "cantidad": 1
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "titulo": "MATERIAL DE OFICINA",
+    "descripcion": "PLAZO DE ENTREGA NECESARIO 15 DIAS",
+    "fecha_creacion": "2026-06-05",
+    "fecha_limite": "2026-06-09",
+    "estado": "activa",
+    "proveedores_invitados": [],
+    "productos": [
+      {
+        "producto_id": 4,
+        "cantidad": 1
+      },
+      {
+        "producto_id": 10,
+        "cantidad": 1
+      },
+      {
+        "producto_id": 11,
+        "cantidad": 1
+      },
+      {
+        "producto_id": 12,
+        "cantidad": 1
+      }
+    ]
+  }
+]

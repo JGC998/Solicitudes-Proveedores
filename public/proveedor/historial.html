@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis cotizaciones — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-label">Proveedor</p>
+      <a href="/proveedor/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Mi panel
+      </a>
+      <a href="/proveedor/historial.html" class="nav-item active">
+        <span class="nav-icon">📋</span> Mis cotizaciones
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">P</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Proveedor</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Mis cotizaciones</h1>
+        <p class="page-subtitle">Historial de presupuestos que has enviado</p>
+      </div>
+      <button class="btn btn-secondary no-print" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+
+    <div class="page-body">
+      <!-- Solo visible al imprimir -->
+      <div class="print-header">
+        <h1 id="print-empresa">Mis cotizaciones</h1>
+        <p id="print-fecha"></p>
+      </div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+      <div id="content" class="hidden">
+
+        <div class="kpi-grid" id="kpi-grid" style="grid-template-columns:repeat(3,1fr);max-width:520px;margin-bottom:1.5rem"></div>
+
+        <div id="lista-cotizaciones"></div>
+        <div id="pag-hist" class="paginacion"></div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'proveedor') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('proveedor');
+    document.getElementById('print-empresa').textContent = `Cotizaciones — ${user.nombre}`;
+    document.getElementById('print-fecha').textContent = `Generado el ${new Date().toLocaleDateString('es-ES', { dateStyle: 'long' })}`;
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await loadHistorial();
+}
+
+const POR_PAGINA = 8;
+let pagHist = 1;
+let todasCots = [];
+
+function cambiarPagHist(n) {
+  pagHist = n;
+  renderCotizaciones();
+}
+
+function renderCotizaciones() {
+  const totalPags = Math.max(1, Math.ceil(todasCots.length / POR_PAGINA));
+  if (pagHist > totalPags) pagHist = 1;
+  const slice = todasCots.slice((pagHist-1)*POR_PAGINA, pagHist*POR_PAGINA);
+
+  const lista = document.getElementById('lista-cotizaciones');
+  lista.innerHTML = slice.map(c => renderCotizacion(c)).join('');
+
+  const pagEl = document.getElementById('pag-hist');
+  if (totalPags <= 1) { pagEl.innerHTML = ''; return; }
+  let html = `<button class="btn-pag" onclick="cambiarPagHist(${pagHist-1})" ${pagHist===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPags; i++)
+    html += `<button class="btn-pag ${i===pagHist?'active':''}" onclick="cambiarPagHist(${i})">${i}</button>`;
+  html += `<button class="btn-pag" onclick="cambiarPagHist(${pagHist+1})" ${pagHist===totalPags?'disabled':''}>›</button>`;
+  html += `<span class="paginacion-info">${todasCots.length} cotizaciones</span>`;
+  pagEl.innerHTML = html;
+}
+
+async function loadHistorial() {
+  const res = await fetch('/api/cotizaciones');
+  const cotizaciones = await res.json();
+  todasCots = cotizaciones;
+
+  // KPIs
+  const total = cotizaciones.length;
+  const totalProductos = cotizaciones.reduce((sum, c) => sum + c.lineas.length, 0);
+  const totalImporte = cotizaciones.reduce((sum, c) => {
+    return sum + c.lineas.reduce((s, l) => {
+      const cant = c.solicitud?.productos?.find(p => p.producto_id === l.producto_id)?.cantidad || 1;
+      return s + (l.precio_unitario * cant);
+    }, 0);
+  }, 0);
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card kpi-primary">
+      <div class="kpi-label">Cotizaciones enviadas</div>
+      <div class="kpi-value">${total}</div>
+    </div>
+    <div class="kpi-card kpi-success">
+      <div class="kpi-label">Líneas de producto</div>
+      <div class="kpi-value">${totalProductos}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Importe total cotizado</div>
+      <div class="kpi-value" style="font-size:1.4rem">${totalImporte.toFixed(0)} €</div>
+    </div>
+  `;
+
+  const lista = document.getElementById('lista-cotizaciones');
+  if (cotizaciones.length === 0) {
+    lista.innerHTML = `
+      <div class="empty-state card">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-title">Aún no has enviado ninguna cotización</div>
+        <a href="/proveedor/dashboard.html" class="btn btn-primary mt-2" style="display:inline-flex">Ver solicitudes</a>
+      </div>
+    `;
+  } else {
+    renderCotizaciones();
+  }
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+function renderCotizacion(c) {
+  const estadoSolicitud = c.solicitud?.estado || 'desconocido';
+  const badgeMap = { activa: 'badge-success', cerrada: 'badge-gray', borrador: 'badge-warning' };
+
+  const subtotal = c.lineas.reduce((sum, l) => {
+    const prod = c.solicitud?.productos?.find(p => p.producto_id === l.producto_id);
+    return sum + (l.precio_unitario * (prod?.cantidad || 1));
+  }, 0);
+
+  const lineasHTML = c.lineas.map(l => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span class="text-sm fw-bold">${l.producto?.nombre || 'Producto'}</span>
+        <span class="text-muted text-sm" style="margin-left:.4rem">${l.producto?.unidad || ''}</span>
+      </div>
+      <div style="text-align:right">
+        <span class="fw-bold">${l.precio_unitario.toFixed(2)} €/u</span>
+        ${l.plazo_entrega ? `<span class="text-muted text-sm" style="margin-left:.4rem">${l.plazo_entrega}d</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  const puedeModificar = estadoSolicitud === 'activa';
+
+  return `
+    <div class="card mb-2">
+      <div class="card-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span class="card-title">${c.solicitud?.titulo || 'Solicitud eliminada'}</span>
+            <span class="badge ${badgeMap[estadoSolicitud] || 'badge-gray'}">${estadoSolicitud}</span>
+            ${c.adjudicada === true ? '<span class="badge badge-success">👑 Adjudicada</span>' : ''}
+            ${c.adjudicada === false ? '<span class="badge badge-danger">No seleccionada</span>' : ''}
+          </div>
+          <div class="text-muted text-sm">Enviado el ${c.fecha}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <span class="fw-bold" style="color:var(--primary)">${subtotal.toFixed(2)} €</span>
+          ${puedeModificar && c.solicitud?.id
+            ? `<a href="/proveedor/cotizar.html?id=${c.solicitud.id}" class="btn btn-secondary btn-sm">Modificar</a>`
+            : ''}
+        </div>
+      </div>
+      <div class="card-body" style="padding-top:.6rem;padding-bottom:.6rem">
+        ${lineasHTML}
+        ${c.notas ? `<p class="text-muted text-sm mt-1"><em>Notas: ${c.notas}</em></p>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

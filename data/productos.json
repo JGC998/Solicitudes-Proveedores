@@ -1,0 +1,14 @@
+[
+  { "id": 1,  "nombre": "Tornillos M8 x 30mm",      "descripcion": "Tornillos métricos acero inoxidable",         "unidad": "caja/100u", "categoria": "Componentes" },
+  { "id": 2,  "nombre": "Tuercas M8 hexagonales",    "descripcion": "Tuercas hex. galvanizadas",                   "unidad": "caja/100u", "categoria": "Componentes" },
+  { "id": 3,  "nombre": "Cable HDMI 2m",             "descripcion": "Cable HDMI 2.0 4K 60Hz",                      "unidad": "unidad",    "categoria": "Informática" },
+  { "id": 4,  "nombre": "Papel A4 80g",              "descripcion": "Resma 500 hojas blanco",                      "unidad": "resma",     "categoria": "Oficina" },
+  { "id": 5,  "nombre": "Cartucho tinta negra HP",   "descripcion": "Cartucho tinta negra compatible HP 301XL",   "unidad": "unidad",    "categoria": "Informática" },
+  { "id": 6,  "nombre": "Cable USB-C 1m",            "descripcion": "Cable USB-C carga rápida 60W",                "unidad": "unidad",    "categoria": "Informática" },
+  { "id": 7,  "nombre": "Cinta embalaje 50mm",       "descripcion": "Cinta adhesiva transparente 66m",             "unidad": "rollo",     "categoria": "Oficina" },
+  { "id": 8,  "nombre": "Guantes nitrilo talla M",   "descripcion": "Caja guantes nitrilo desechables sin polvo", "unidad": "caja/100u", "categoria": "EPI" },
+  { "id": 9,  "nombre": "Mascarilla FFP2",           "descripcion": "Mascarilla filtrante sin válvula FFP2",       "unidad": "caja/20u",  "categoria": "EPI" },
+  { "id": 10, "nombre": "Pilas AA alcalinas",        "descripcion": "Pack 4 pilas alcalinas AA 1.5V",              "unidad": "pack/4u",   "categoria": "Informática" },
+  { "id": 11, "nombre": "CABLE HDMI",                "descripcion": "",                                             "unidad": "1m",        "categoria": "Informática" },
+  { "id": 12, "nombre": "RATON INALAMBRICO",         "descripcion": "",                                             "unidad": "UNIDAD",    "categoria": "Informática" }
+]

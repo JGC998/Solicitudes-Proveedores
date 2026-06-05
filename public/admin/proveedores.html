@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proveedores — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item active">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Gestión de proveedores</h1>
+        <p class="page-subtitle">Crea, edita y activa o desactiva cuentas de proveedor</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">＋ Nuevo proveedor</button>
+    </div>
+
+    <div class="page-body">
+      <div id="alert-area"></div>
+
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
+
+      <!-- Pendientes de aprobación -->
+      <div id="card-pendientes" class="hidden card mb-2" style="border-left:4px solid var(--warning)">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--warning)">⏳ Solicitudes pendientes de aprobación</span>
+          <span class="badge badge-warning" id="badge-pendientes">0</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Email</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-pendientes"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="content" class="hidden card">
+        <div class="card-header">
+          <span class="card-title" id="count-label">— proveedores</span>
+          <input type="text" id="buscar" class="form-control" style="width:220px"
+            placeholder="Buscar por nombre o email..." oninput="renderTabla()">
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Proveedor</th>
+                <th>Email</th>
+                <th>Contraseña</th>
+                <th>Estado</th>
+                <th>Cotizaciones</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-proveedores"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal crear / editar proveedor -->
+<div id="modal-proveedor" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px">
+    <h2 class="modal-title" id="modal-titulo">Nuevo proveedor</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label class="form-label">Nombre de la empresa *</label>
+      <input id="campo-nombre" type="text" class="form-control" placeholder="Ej: Suministros García SL">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email de acceso *</label>
+      <input id="campo-email" type="email" class="form-control" placeholder="proveedor@empresa.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="label-password">Contraseña *</label>
+      <div style="display:flex;gap:.5rem">
+        <input id="campo-password" type="text" class="form-control" placeholder="Contraseña de acceso">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="generarPassword()" style="white-space:nowrap">
+          Generar
+        </button>
+      </div>
+      <p class="form-hint" id="hint-password">Se usará para que el proveedor inicie sesión.</p>
+    </div>
+    <div id="modal-alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmar eliminar -->
+<div id="modal-delete" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 class="modal-title">¿Eliminar proveedor?</h2>
+    <p class="modal-body">Se eliminará la cuenta permanentemente. Sus cotizaciones existentes quedarán sin proveedor asignado. No se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cerrarModalDelete()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let proveedores = [];
+let cotizaciones = [];
+let deleteId = null;
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await cargar();
+}
+
+async function cargar() {
+  const [provRes, cotRes] = await Promise.all([
+    fetch('/api/proveedores'),
+    fetch('/api/cotizaciones')
+  ]);
+  proveedores = await provRes.json();
+  cotizaciones = await cotRes.json();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+  renderPendientes();
+  renderTabla();
+}
+
+function renderPendientes() {
+  const pendientes = proveedores.filter(p => p.pendiente);
+  if (pendientes.length === 0) {
+    document.getElementById('card-pendientes').classList.add('hidden');
+    return;
+  }
+  document.getElementById('card-pendientes').classList.remove('hidden');
+  document.getElementById('badge-pendientes').textContent = pendientes.length;
+  document.getElementById('tabla-pendientes').innerHTML = pendientes.map(p => `
+    <tr>
+      <td><strong>${p.nombre}</strong></td>
+      <td class="text-muted">${p.email}</td>
+      <td style="display:flex;gap:.4rem">
+        <button class="btn btn-success btn-sm" onclick="aprobar(${p.id})">✓ Aprobar</button>
+        <button class="btn btn-danger btn-sm" onclick="pedirDelete(${p.id})">Rechazar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function aprobar(id) {
+  const res = await fetch(`/api/proveedores/${id}/aprobar`, { method: 'PATCH' });
+  if (res.ok) {
+    const idx = proveedores.findIndex(p => p.id === id);
+    if (idx !== -1) { proveedores[idx].activo = true; proveedores[idx].pendiente = false; }
+    renderPendientes();
+    renderTabla();
+    mostrarAlerta('Proveedor aprobado y activado.', 'success');
+  }
+}
+
+function renderTabla() {
+  const q = document.getElementById('buscar').value.toLowerCase();
+  const lista = proveedores.filter(p =>
+    !p.pendiente &&
+    (p.nombre.toLowerCase().includes(q) || p.email.toLowerCase().includes(q))
+  );
+  document.getElementById('count-label').textContent = `${lista.length} proveedor(es)`;
+
+  const tbody = document.getElementById('tabla-proveedores');
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">No hay proveedores con ese criterio</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(p => {
+    const numCots = cotizaciones.filter(c => c.proveedor?.id === p.id).length;
+    const activo = p.activo !== false;
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:.6rem">
+            <div style="width:32px;height:32px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem;flex-shrink:0">
+              ${p.nombre[0].toUpperCase()}
+            </div>
+            <strong>${p.nombre}</strong>
+          </div>
+        </td>
+        <td class="text-muted">${p.email}</td>
+        <td>
+          <span class="text-muted text-sm" style="font-family:monospace" id="pass-${p.id}">••••••••</span>
+          <button class="btn btn-secondary btn-sm" style="margin-left:.3rem;padding:.15rem .4rem"
+            onclick="togglePass(${p.id}, '${p.password || ''}')">👁</button>
+        </td>
+        <td>
+          <span class="badge ${activo ? 'badge-success' : 'badge-danger'}">${activo ? 'Activo' : 'Inactivo'}</span>
+        </td>
+        <td><span class="badge badge-info">${numCots} cotizaciones</span></td>
+        <td style="display:flex;gap:.3rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="abrirModal(${p.id})">Editar</button>
+          <button class="btn ${activo ? 'btn-secondary' : 'btn-success'} btn-sm"
+            onclick="toggleActivo(${p.id}, ${!activo})">
+            ${activo ? 'Desactivar' : 'Activar'}
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="pedirDelete(${p.id})">Eliminar</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function togglePass(id, pass) {
+  const el = document.getElementById(`pass-${id}`);
+  el.textContent = el.textContent === '••••••••' ? (pass || '(sin contraseña)') : '••••••••';
+}
+
+function generarPassword() {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let pass = '';
+  for (let i = 0; i < 10; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('campo-password').value = pass;
+}
+
+function abrirModal(id) {
+  document.getElementById('modal-alert').innerHTML = '';
+  document.getElementById('btn-guardar').disabled = false;
+  if (id) {
+    const p = proveedores.find(x => x.id === id);
+    document.getElementById('modal-titulo').textContent = 'Editar proveedor';
+    document.getElementById('edit-id').value = id;
+    document.getElementById('campo-nombre').value = p.nombre;
+    document.getElementById('campo-email').value = p.email;
+    document.getElementById('campo-password').value = p.password || '';
+    document.getElementById('label-password').textContent = 'Contraseña (dejar en blanco para no cambiar)';
+    document.getElementById('hint-password').textContent = 'Si no quieres cambiarla, déjalo vacío.';
+  } else {
+    document.getElementById('modal-titulo').textContent = 'Nuevo proveedor';
+    document.getElementById('edit-id').value = '';
+    document.getElementById('campo-nombre').value = '';
+    document.getElementById('campo-email').value = '';
+    document.getElementById('campo-password').value = '';
+    document.getElementById('label-password').textContent = 'Contraseña *';
+    document.getElementById('hint-password').textContent = 'Se usará para que el proveedor inicie sesión.';
+  }
+  document.getElementById('modal-proveedor').classList.remove('hidden');
+  document.getElementById('campo-nombre').focus();
+}
+
+function cerrarModal() {
+  document.getElementById('modal-proveedor').classList.add('hidden');
+}
+
+async function guardar() {
+  const nombre = document.getElementById('campo-nombre').value.trim();
+  const email = document.getElementById('campo-email').value.trim();
+  const password = document.getElementById('campo-password').value.trim();
+  const editId = document.getElementById('edit-id').value;
+  const alertEl = document.getElementById('modal-alert');
+
+  if (!nombre || !email) {
+    alertEl.innerHTML = `<div class="alert alert-danger">Nombre y email son obligatorios.</div>`;
+    return;
+  }
+  if (!editId && !password) {
+    alertEl.innerHTML = `<div class="alert alert-danger">La contraseña es obligatoria para cuentas nuevas.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+
+  const body = { nombre, email };
+  if (password) body.password = password;
+
+  const url = editId ? `/api/proveedores/${editId}` : '/api/proveedores';
+  const method = editId ? 'PATCH' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alertEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    btn.disabled = false;
+    return;
+  }
+
+  if (editId) {
+    const idx = proveedores.findIndex(p => p.id === parseInt(editId));
+    if (idx !== -1) proveedores[idx] = { ...proveedores[idx], ...data, password: password || proveedores[idx].password };
+  } else {
+    proveedores.push({ ...data, password });
+  }
+
+  cerrarModal();
+  renderTabla();
+  mostrarAlerta(`Proveedor ${editId ? 'actualizado' : 'creado'} correctamente.`, 'success');
+}
+
+async function toggleActivo(id, nuevoEstado) {
+  const res = await fetch(`/api/proveedores/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activo: nuevoEstado })
+  });
+  if (res.ok) {
+    const idx = proveedores.findIndex(p => p.id === id);
+    if (idx !== -1) proveedores[idx].activo = nuevoEstado;
+    renderTabla();
+    mostrarAlerta(`Proveedor ${nuevoEstado ? 'activado' : 'desactivado'}.`, nuevoEstado ? 'success' : 'warning');
+  }
+}
+
+function pedirDelete(id) {
+  deleteId = id;
+  document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+function cerrarModalDelete() {
+  document.getElementById('modal-delete').classList.add('hidden');
+  deleteId = null;
+}
+
+async function confirmarDelete() {
+  if (!deleteId) return;
+  const res = await fetch(`/api/proveedores/${deleteId}`, { method: 'DELETE' });
+  if (res.ok) {
+    proveedores = proveedores.filter(p => p.id !== deleteId);
+    renderTabla();
+    mostrarAlerta('Proveedor eliminado.', 'warning');
+  }
+  cerrarModalDelete();
+}
+
+function mostrarAlerta(msg, tipo) {
+  const el = document.getElementById('alert-area');
+  el.innerHTML = `<div class="alert alert-${tipo}">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

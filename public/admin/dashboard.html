@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item active">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a href="/admin/solicitudes.html" class="nav-item">
+        <span class="nav-icon">📄</span> Solicitudes
+      </a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item">
+        <span class="nav-icon">＋</span> Nueva solicitud
+      </a>
+      <a href="/admin/analisis.html" class="nav-item">
+        <span class="nav-icon">📊</span> Análisis & KPIs
+      </a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item">
+        <span class="nav-icon">📦</span> Catálogo
+      </a>
+      <a href="/admin/proveedores.html" class="nav-item">
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+        <span class="nav-icon">👥</span> Proveedores
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Resumen general del sistema de proveedores</p>
+      </div>
+      <a href="/admin/nueva-solicitud.html" class="btn btn-primary">＋ Nueva solicitud</a>
+    </div>
+
+    <div class="page-body">
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando datos...</div>
+      <div id="content" class="hidden">
+
+        <!-- KPIs -->
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <!-- Gráficas -->
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Estado de solicitudes</span></div>
+            <div class="chart-container"><canvas id="chart-estados"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Cotizaciones por proveedor</span></div>
+            <div class="chart-container"><canvas id="chart-proveedores"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Solicitudes recientes -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <span class="card-title">Solicitudes recientes</span>
+            <a href="/admin/solicitudes.html" class="btn btn-secondary btn-sm">Ver todas</a>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Fecha límite</th>
+                  <th>Estado</th>
+                  <th>Respuestas</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="solicitudes-recientes"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+let charts = {};
+
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await loadData();
+}
+
+async function loadData() {
+  const [kpisRes, solicitudesRes] = await Promise.all([
+    fetch('/api/analisis/kpis'),
+    fetch('/api/solicitudes')
+  ]);
+  const kpis = await kpisRes.json();
+  const solicitudes = await solicitudesRes.json();
+
+  renderKpis(kpis.kpis);
+  renderCharts(kpis);
+  renderSolicitudesRecientes(solicitudes.slice(0, 5));
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+function renderKpis(k) {
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card kpi-primary">
+      <div class="kpi-label">Solicitudes totales</div>
+      <div class="kpi-value">${k.totalSolicitudes}</div>
+      <div class="kpi-sub">${k.solicitudesActivas} activas ahora</div>
+    </div>
+    <div class="kpi-card kpi-success">
+      <div class="kpi-label">Cotizaciones recibidas</div>
+      <div class="kpi-value">${k.totalCotizaciones}</div>
+      <div class="kpi-sub">De ${k.totalProveedores} proveedores</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-label">Tasa de respuesta</div>
+      <div class="kpi-value">${k.tasaRespuesta}%</div>
+      <div class="kpi-sub">Cotizaciones / (solicitudes × proveedores)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Proveedores registrados</div>
+      <div class="kpi-value">${k.totalProveedores}</div>
+      <div class="kpi-sub">Activos en el sistema</div>
+    </div>
+  `;
+}
+
+function renderCharts(data) {
+  const COLORS = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+
+  // Doughnut: estados
+  const estados = data.estadosSolicitudes;
+  charts.estados = new Chart(document.getElementById('chart-estados'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Activas', 'Cerradas', 'Borrador'],
+      datasets: [{ data: [estados.activa, estados.cerrada, estados.borrador], backgroundColor: ['#10b981','#64748b','#f59e0b'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } }, cutout: '60%' }
+  });
+
+  // Bar: cotizaciones por proveedor
+  const provs = data.cotizacionesPorProveedor;
+  charts.proveedores = new Chart(document.getElementById('chart-proveedores'), {
+    type: 'bar',
+    data: {
+      labels: provs.map(p => p.nombre),
+      datasets: [{ label: 'Cotizaciones', data: provs.map(p => p.total), backgroundColor: COLORS, borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+
+function estadoBadge(estado) {
+  const map = { activa: 'badge-success', cerrada: 'badge-gray', borrador: 'badge-warning' };
+  const label = { activa: 'Activa', cerrada: 'Cerrada', borrador: 'Borrador' };
+  return `<span class="badge ${map[estado] || 'badge-gray'}">${label[estado] || estado}</span>`;
+}
+
+function renderSolicitudesRecientes(list) {
+  const tbody = document.getElementById('solicitudes-recientes');
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No hay solicitudes aún</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(s => `
+    <tr>
+      <td><strong>${s.titulo}</strong></td>
+      <td class="text-muted">${s.fecha_limite}</td>
+      <td>${estadoBadge(s.estado)}</td>
+      <td><span class="badge badge-info">${s.num_cotizaciones} respuestas</span></td>
+      <td><a href="/admin/detalle.html?id=${s.id}" class="btn btn-secondary btn-sm">Ver detalle</a></td>
+    </tr>
+  `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>

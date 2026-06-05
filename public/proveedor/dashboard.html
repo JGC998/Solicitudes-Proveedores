@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi panel — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-label">Proveedor</p>
+      <a href="/proveedor/dashboard.html" class="nav-item active">
+        <span class="nav-icon">⊞</span> Mi panel
+      </a>
+      <a href="/proveedor/historial.html" class="nav-item">
+        <span class="nav-icon">📋</span> Mis cotizaciones
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">P</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Proveedor</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Solicitudes de presupuesto</h1>
+        <p class="page-subtitle">Solicitudes activas que requieren tu respuesta</p>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div id="loading" class="loading"><div class="spinner"></div> Cargando solicitudes...</div>
+      <div id="content" class="hidden">
+
+        <!-- KPIs rápidos -->
+        <div class="kpi-grid" id="kpi-grid" style="grid-template-columns:repeat(3,1fr);max-width:600px;margin-bottom:1.5rem"></div>
+
+        <!-- Solicitudes activas -->
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:.8rem">Solicitudes abiertas</h2>
+        <div id="lista-solicitudes"></div>
+        <div id="pag-activas" class="paginacion"></div>
+
+        <!-- Solicitudes cerradas -->
+        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 .8rem">Solicitudes cerradas</h2>
+        <div id="lista-cerradas"></div>
+        <div id="pag-cerradas" class="paginacion"></div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'proveedor') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('proveedor');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await loadSolicitudes();
+}
+
+const POR_PAGINA = 8;
+let pagActivas = 1, pagCerradas = 1;
+
+function badgeUrgencia(fechaLimite) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const limite = new Date(fechaLimite + 'T00:00:00');
+  const dias = Math.round((limite - hoy) / 86400000);
+  if (dias < 0)   return `<span class="badge badge-danger">⚠ Vencida</span>`;
+  if (dias === 0)  return `<span class="badge badge-danger">⚠ Hoy</span>`;
+  if (dias <= 3)   return `<span class="badge badge-warning">🔥 ${dias}d</span>`;
+  return '';
+}
+
+function pagControles(lista, pag, fnCambiar, elId) {
+  const totalPags = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  if (totalPags <= 1) { document.getElementById(elId).innerHTML = ''; return lista; }
+  let html = `<button class="btn-pag" onclick="${fnCambiar}(${pag-1})" ${pag===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPags; i++)
+    html += `<button class="btn-pag ${i===pag?'active':''}" onclick="${fnCambiar}(${i})">${i}</button>`;
+  html += `<button class="btn-pag" onclick="${fnCambiar}(${pag+1})" ${pag===totalPags?'disabled':''}>›</button>`;
+  html += `<span class="paginacion-info">${lista.length} solicitudes</span>`;
+  document.getElementById(elId).innerHTML = html;
+  return lista.slice((pag-1)*POR_PAGINA, pag*POR_PAGINA);
+}
+
+let todasActivas = [], todasCerradas = [];
+
+function cambiarPagActivas(n) { pagActivas = n; renderListas(); }
+function cambiarPagCerradas(n) { pagCerradas = n; renderListas(); }
+
+function renderListas() {
+  const listaActivas = document.getElementById('lista-solicitudes');
+  if (todasActivas.length === 0) {
+    listaActivas.innerHTML = `<div class="empty-state card"><div class="empty-state-icon">✅</div><div class="empty-state-title">No hay solicitudes activas ahora mismo</div></div>`;
+    document.getElementById('pag-activas').innerHTML = '';
+  } else {
+    const slice = pagControles(todasActivas, pagActivas, 'cambiarPagActivas', 'pag-activas');
+    listaActivas.innerHTML = slice.map(s => renderSolicitudCard(s)).join('');
+  }
+
+  const listaCerradas = document.getElementById('lista-cerradas');
+  if (todasCerradas.length === 0) {
+    listaCerradas.innerHTML = `<p class="text-muted text-sm">No hay solicitudes cerradas.</p>`;
+    document.getElementById('pag-cerradas').innerHTML = '';
+  } else {
+    const slice = pagControles(todasCerradas, pagCerradas, 'cambiarPagCerradas', 'pag-cerradas');
+    listaCerradas.innerHTML = slice.map(s => renderSolicitudCard(s, true)).join('');
+  }
+}
+
+async function loadSolicitudes() {
+  const res = await fetch('/api/solicitudes');
+  const solicitudes = await res.json();
+
+  todasActivas = solicitudes.filter(s => s.estado === 'activa');
+  todasCerradas = solicitudes.filter(s => s.estado === 'cerrada');
+  const pendientes = todasActivas.filter(s => !s.ya_cotizado).length;
+  const respondidas = solicitudes.filter(s => s.ya_cotizado).length;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card kpi-primary">
+      <div class="kpi-label">Solicitudes activas</div>
+      <div class="kpi-value">${todasActivas.length}</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-label">Pendientes de respuesta</div>
+      <div class="kpi-value">${pendientes}</div>
+    </div>
+    <div class="kpi-card kpi-success">
+      <div class="kpi-label">Ya cotizadas</div>
+      <div class="kpi-value">${respondidas}</div>
+    </div>
+  `;
+
+  renderListas();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+function renderSolicitudCard(s, cerrada = false) {
+  const productos = s.productos.map(p =>
+    `<span class="product-pill">${p.producto?.nombre || 'Producto'} × ${p.cantidad}</span>`
+  ).join('');
+
+  const badge = s.ya_cotizado
+    ? `<span class="badge badge-success">✓ Cotizado</span>`
+    : cerrada
+      ? `<span class="badge badge-gray">Cerrada</span>`
+      : `<span class="badge badge-warning">Pendiente</span>`;
+
+  const accion = s.ya_cotizado
+    ? `<a href="/proveedor/cotizar.html?id=${s.id}" class="btn btn-secondary btn-sm">Ver / Modificar cotización</a>`
+    : cerrada
+      ? `<span class="text-muted text-sm">No cotizaste esta solicitud</span>`
+      : `<a href="/proveedor/cotizar.html?id=${s.id}" class="btn btn-primary btn-sm">Cotizar ahora</a>`;
+
+  return `
+    <div class="card mb-2">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem">
+              <strong style="font-size:1rem">${s.titulo}</strong>
+              ${badge}
+            </div>
+            ${s.descripcion ? `<p class="text-muted text-sm mb-1">${s.descripcion}</p>` : ''}
+            <div style="margin:.5rem 0">${productos}</div>
+            <div class="text-muted text-sm" style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+              Fecha límite: <strong>${s.fecha_limite}</strong>
+              ${!cerrada ? badgeUrgencia(s.fecha_limite) : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center">
+            ${accion}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script src="/js/ui.js"></script>
+</body>
+</html>
