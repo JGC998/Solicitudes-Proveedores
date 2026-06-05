@@ -196,10 +196,10 @@ function renderTabla() {
   tbody.innerHTML = lista.map(p => `
     <tr>
       <td class="text-muted text-sm">#${p.id}</td>
-      <td><strong>${p.nombre}</strong></td>
-      <td>${p.categoria ? `<span class="cat-pill ${catClass[p.categoria]||'cat-Otros'}">${p.categoria}</span>` : '<span class="text-muted text-sm">—</span>'}</td>
-      <td class="text-muted">${p.descripcion || '—'}</td>
-      <td><span class="badge badge-info">${p.unidad}</span></td>
+      <td><strong>${escapeHtml(p.nombre)}</strong></td>
+      <td>${p.categoria ? `<span class="cat-pill ${catClass[p.categoria]||'cat-Otros'}">${escapeHtml(p.categoria)}</span>` : '<span class="text-muted text-sm">—</span>'}</td>
+      <td class="text-muted">${escapeHtml(p.descripcion || '—')}</td>
+      <td><span class="badge badge-info">${escapeHtml(p.unidad)}</span></td>
       <td style="display:flex;gap:.4rem">
         <button class="btn btn-secondary btn-sm" onclick="abrirModal(${p.id})">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="pedirDelete(${p.id})">Eliminar</button>

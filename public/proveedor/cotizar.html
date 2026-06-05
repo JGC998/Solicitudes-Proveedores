@@ -159,7 +159,7 @@ async function loadSolicitud() {
 
   const solicitud = await solicRes.json();
   const todasCots = await cotRes.json();
-  const miCotizacion = todasCots.find(c => c.solicitud?.id === solicitudId);
+  const miCotizacion = todasCots.find(c => c.solicitud_id === solicitudId);
 
   solicitudData = solicitud;
   esCerrada = solicitud.estado === 'cerrada';
@@ -197,7 +197,7 @@ async function loadSolicitud() {
 function renderLineas(productos, miCotizacion) {
   const container = document.getElementById('lineas-container');
   container.innerHTML = productos.map(p => {
-    const linea = miCotizacion?.lineas?.find(l => l.producto_id === p.producto?.id);
+    const linea = miCotizacion?.lineas?.find(l => l.producto_id === p.producto_id);
     return `
       <div class="quote-line">
         <div>
@@ -282,19 +282,27 @@ async function submitCotizacion() {
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
-  const res = await fetch('/api/cotizaciones', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      solicitud_id: solicitudId,
-      lineas,
-      notas: document.getElementById('notas').value
-    })
-  });
-  const data = await res.json();
+  let res, data;
+  try {
+    res = await fetch('/api/cotizaciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        solicitud_id: solicitudId,
+        lineas,
+        notas: document.getElementById('notas').value
+      })
+    });
+    data = await res.json();
+  } catch {
+    alert.innerHTML = `<div class="alert alert-danger">Error de conexión. Inténtalo de nuevo.</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Enviar cotización';
+    return;
+  }
 
   if (!res.ok) {
-    alert.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    alert.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error || 'Error al enviar')}</div>`;
     btn.disabled = false;
     btn.textContent = 'Enviar cotización';
     return;

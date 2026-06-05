@@ -306,7 +306,10 @@ function toggleProduct(id, checked) {
 }
 
 function updateQty(id, val) {
-  if (selected[id] !== undefined) selected[id] = parseInt(val) || 1;
+  if (selected[id] !== undefined) {
+    const n = parseInt(val);
+    selected[id] = (n > 0) ? n : 1;
+  }
 }
 
 function updateResumen() {

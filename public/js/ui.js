@@ -94,24 +94,24 @@ function _renderSearch({ solicitudes = [], proveedores = [], productos = [] }, b
       const badge = { activa:'badge-success', cerrada:'badge-gray', borrador:'badge-warning' };
       html += solicitudes.map(s =>
         `<a href="/admin/detalle.html?id=${s.id}" class="search-item">
-          <span>${s.titulo}</span>
-          <span class="badge ${badge[s.estado]||'badge-gray'} badge-xs">${s.estado}</span>
+          <span>${escapeHtml(s.titulo)}</span>
+          <span class="badge ${badge[s.estado]||'badge-gray'} badge-xs">${escapeHtml(s.estado)}</span>
         </a>`).join('');
     }
     if (proveedores.length) {
       html += `<div class="search-group">Proveedores</div>`;
       html += proveedores.map(p =>
         `<a href="/admin/proveedores.html" class="search-item">
-          <span>${p.nombre}</span>
-          <span class="search-item-meta">${p.email}</span>
+          <span>${escapeHtml(p.nombre)}</span>
+          <span class="search-item-meta">${escapeHtml(p.email)}</span>
         </a>`).join('');
     }
     if (productos.length) {
       html += `<div class="search-group">Productos</div>`;
       html += productos.map(p =>
         `<a href="/admin/productos.html" class="search-item">
-          <span>${p.nombre}</span>
-          <span class="search-item-meta">${p.categoria || ''} · ${p.unidad}</span>
+          <span>${escapeHtml(p.nombre)}</span>
+          <span class="search-item-meta">${escapeHtml(p.categoria || '')} · ${escapeHtml(p.unidad)}</span>
         </a>`).join('');
     }
     box.innerHTML = html;

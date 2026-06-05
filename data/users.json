@@ -2,7 +2,7 @@
   {
     "id": 1,
     "nombre": "Empresa Ejemplo SA",
-    "email": "juangarciacardenas99@gmail.com",
+    "email": "admin@empresa.com",
     "password": "$2b$10$05B3KoB5IKa4dMSJdKyCpuwLdoYoGRyk8RxrVCwHKLiE4SuiHTxum",
     "rol": "admin",
     "activo": true

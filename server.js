@@ -28,11 +28,11 @@ async function initEmail() {
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT) || 587,
       auth: {
-        user: process.env.SMTP_USER || 'juangarciacardenas99@gmail.com',
+        user: process.env.SMTP_USER || 'admin@empresa.com',
         pass
       }
     });
-    console.log(`  📧 Email configurado: ${process.env.SMTP_USER || 'juangarciacardenas99@gmail.com'}`);
+    console.log(`  📧 Email configurado: ${process.env.SMTP_USER || 'admin@empresa.com'}`);
   } else {
     const account = await nodemailer.createTestAccount();
     transporter = nodemailer.createTransport({
@@ -45,7 +45,7 @@ async function initEmail() {
   }
 }
 
-const EMAIL_FROM = `"RFQ Manager" <${process.env.SMTP_USER || 'juangarciacardenas99@gmail.com'}>`;
+const EMAIL_FROM = `"RFQ Manager" <${process.env.SMTP_USER || 'admin@empresa.com'}>`;
 
 async function sendEmail(to, subject, html) {
   if (!transporter) return;
@@ -1312,7 +1312,7 @@ async function main() {
     app.listen(PORT, () => {
       console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
       console.log('   Credenciales demo:');
-      console.log('   Admin     → juangarciacardenas99@gmail.com / admin123');
+      console.log('   Admin     → admin@empresa.com / admin123');
       console.log('   Proveedor → garcia@suministros.com / garcia123\n');
     });
   } catch (e) {
