@@ -10,6 +10,7 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 // ─── Multer: subida de archivos en memoria ────────────────────────────────────
 const upload = multer({
@@ -379,7 +380,6 @@ app.post('/api/solicitudes', requireAdmin, async (req, res) => {
       crearNotificacion(p.id, 'nueva_solicitud', `Nueva solicitud: "${nueva.titulo}"`, nueva.id)
     ));
 
-    const baseUrl = process.env.APP_URL || `http://localhost:${PORT}`;
     destinatarios.forEach(p => sendEmail(
       p.email_notificaciones || p.email,
       `Nueva solicitud de presupuesto: "${nueva.titulo}"`,
@@ -392,11 +392,11 @@ app.post('/api/solicitudes', requireAdmin, async (req, res) => {
            ${nueva.descripcion ? `<p style="margin:.5rem 0 0;color:#64748b">${nueva.descripcion}</p>` : ''}
            <p style="margin:.5rem 0 0;color:#64748b">📅 Fecha límite: <strong>${nueva.fecha_limite}</strong></p>
          </div>
-         <a href="${baseUrl}/proveedor/cotizar.html?id=${nueva.id}"
+         <a href="${APP_URL}/proveedor/cotizar.html?id=${nueva.id}"
             style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
            Enviar cotización →
          </a>
-         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${baseUrl}" style="color:#94a3b8">${baseUrl}</a></p>
+         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${APP_URL}" style="color:#94a3b8">${APP_URL}</a></p>
        </div>`
     ));
 
@@ -520,7 +520,6 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
       crearNotificacion(a.id, 'nueva_cotizacion',
         `${req.session.user.nombre} ha enviado cotización para "${solData?.titulo}"`, solicitud_id)
     ));
-    const appUrlCot = process.env.APP_URL || `http://localhost:${PORT}`;
     admins.forEach(a => sendEmail(
       a.email,
       `💬 Nueva cotización recibida — ${solData?.titulo}`,
@@ -531,11 +530,11 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
          <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:1rem 1.2rem;margin:1rem 0;border-radius:4px">
            <p style="margin:0;font-size:1.1em;font-weight:700">${solData?.titulo}</p>
          </div>
-         <a href="${appUrlCot}/admin/detalle.html?id=${solicitud_id}"
+         <a href="${APP_URL}/admin/detalle.html?id=${solicitud_id}"
             style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
            Ver comparativa de precios →
          </a>
-         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrlCot}" style="color:#94a3b8">${appUrlCot}</a></p>
+         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${APP_URL}" style="color:#94a3b8">${APP_URL}</a></p>
        </div>`
     ));
 
@@ -654,7 +653,6 @@ app.patch('/api/cotizaciones/:id/adjudicar', requireAdmin, async (req, res) => {
         : `Tu cotización para "${solData2?.titulo}" no fue seleccionada esta vez`;
       crearNotificacion(c.proveedor_id, ganó ? 'adjudicado' : 'no_adjudicado', msg, cot.solicitud_id);
       const prov = allU2.find(u => u.id === c.proveedor_id);
-      const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
       if (prov) sendEmail(
         prov.email_notificaciones || prov.email,
         ganó ? `✅ Tu cotización ha sido seleccionada — ${solData2?.titulo}` : `Resultado de la solicitud: ${solData2?.titulo}`,
@@ -664,22 +662,22 @@ app.patch('/api/cotizaciones/:id/adjudicar', requireAdmin, async (req, res) => {
                <p>Hola <strong>${prov.nombre}</strong>,</p>
                <p>¡Enhorabuena! Tu cotización para la solicitud <strong>"${solData2?.titulo}"</strong> ha sido seleccionada.</p>
                <p>El equipo de compras se pondrá en contacto contigo en breve para coordinar el pedido.</p>
-               <a href="${appUrl}/proveedor/historial.html"
+               <a href="${APP_URL}/proveedor/historial.html"
                   style="display:inline-block;background:#10b981;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
                  Ver mis cotizaciones →
                </a>
-               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrl}" style="color:#94a3b8">${appUrl}</a></p>
+               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${APP_URL}" style="color:#94a3b8">${APP_URL}</a></p>
              </div>`
           : `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
                <h2 style="color:#64748b">Resultado de la solicitud</h2>
                <p>Hola <strong>${prov.nombre}</strong>,</p>
                <p>Tu cotización para <strong>"${solData2?.titulo}"</strong> no fue seleccionada en esta ocasión.</p>
                <p>Gracias por participar. Seguiremos contando contigo en futuras solicitudes.</p>
-               <a href="${appUrl}/proveedor/dashboard.html"
+               <a href="${APP_URL}/proveedor/dashboard.html"
                   style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
                  Ver solicitudes activas →
                </a>
-               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrl}" style="color:#94a3b8">${appUrl}</a></p>
+               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${APP_URL}" style="color:#94a3b8">${APP_URL}</a></p>
              </div>`
       );
     });
@@ -984,16 +982,22 @@ app.post('/api/solicitudes/:id/orden-compra', requireAdmin, async (req, res) => 
     if (cotAdj) {
       const [allUsers, allProds] = await Promise.all([readData('users.json'), readData('productos.json')]);
       const prov = allUsers.find(u => u.id === cotAdj.proveedor_id);
-      const resultadoApi = await pushPedidoExterno(solicitudes[idx], cotAdj, prov, allProds);
-      if (resultadoApi.motivo === 'sin_api') {
-        // No hay API configurada, es normal en modo demo
-      } else if (resultadoApi.ok) {
-        solicitudes[idx].pendiente_envio_api = false;
-        if (resultadoApi.id_externo) solicitudes[idx].id_api_externa = resultadoApi.id_externo;
-      } else {
+      if (!prov) {
         solicitudes[idx].pendiente_envio_api = true;
-        solicitudes[idx].error_api = resultadoApi.motivo;
-        console.warn(`  ⚠ Pedido ${num} no pudo enviarse a API externa: ${resultadoApi.motivo}`);
+        solicitudes[idx].error_api = 'Proveedor no encontrado';
+        console.warn(`  ⚠ Pedido ${num}: proveedor adjudicado no existe en el sistema`);
+      } else {
+        const resultadoApi = await pushPedidoExterno(solicitudes[idx], cotAdj, prov, allProds);
+        if (resultadoApi.motivo === 'sin_api') {
+          // No hay API configurada, es normal en modo demo
+        } else if (resultadoApi.ok) {
+          solicitudes[idx].pendiente_envio_api = false;
+          if (resultadoApi.id_externo) solicitudes[idx].id_api_externa = resultadoApi.id_externo;
+        } else {
+          solicitudes[idx].pendiente_envio_api = true;
+          solicitudes[idx].error_api = resultadoApi.motivo;
+          console.warn(`  ⚠ Pedido ${num} no pudo enviarse a API externa: ${resultadoApi.motivo}`);
+        }
       }
     }
 
@@ -1097,7 +1101,7 @@ app.get('/api/eventos', requireAuth, (req, res) => {
 // la implementación interna sin tocar las rutas ni el frontend.
 
 async function getProductosExternos() {
-  const url = process.env.EXTERNAL_API_URL;
+  const url = (process.env.EXTERNAL_API_URL || '').replace(/\/$/, '');
   const key = process.env.EXTERNAL_API_KEY || '';
   if (!url) return null;
 
@@ -1145,7 +1149,7 @@ async function getProductosExternos() {
 }
 
 async function pushPedidoExterno(solicitud, cotizacion, proveedor, productos) {
-  const url = process.env.EXTERNAL_API_URL;
+  const url = (process.env.EXTERNAL_API_URL || '').replace(/\/$/, '');
   const key = process.env.EXTERNAL_API_KEY || '';
   if (!url) return { ok: false, motivo: 'sin_api' };
 
@@ -1220,7 +1224,7 @@ app.get('/api/admin/integracion', requireAdmin, async (req, res) => {
     });
     const solicitudes = await readData('solicitudes.json');
     res.json({
-      estado: test.status < 500 ? 'conectada' : 'error',
+      estado: test.ok ? 'conectada' : (test.status < 500 ? 'alcanzable' : 'error'),
       codigo_http: test.status,
       url,
       pendientes_envio: solicitudes.filter(s => s.pendiente_envio_api).length
@@ -1250,6 +1254,7 @@ app.post('/api/admin/reintentar-envio/:id', requireAdmin, async (req, res) => {
     const cotizacion = cotizaciones.find(c => c.solicitud_id === id && c.adjudicada === true);
     if (!cotizacion) return res.status(400).json({ error: 'No hay cotización adjudicada para esta solicitud' });
     const proveedor = users.find(u => u.id === cotizacion.proveedor_id);
+    if (!proveedor) return res.status(400).json({ error: 'El proveedor adjudicado no existe en el sistema' });
     const resultado = await pushPedidoExterno(solicitudes[idx], cotizacion, proveedor, productos);
     if (resultado.ok) {
       solicitudes[idx].pendiente_envio_api = false;
@@ -1263,6 +1268,14 @@ app.post('/api/admin/reintentar-envio/:id', requireAdmin, async (req, res) => {
 
 // ─── Root redirect ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.redirect('/login.html'));
+
+// ─── Middleware de error global ───────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE')
+    return res.status(400).json({ error: 'El archivo supera el límite de 2 MB' });
+  console.error('Express error no controlado:', err.message);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
 
 // ─── Migración automática de contraseñas a bcrypt ─────────────────────────────
 async function migrarPasswordsSiNecesario() {
@@ -1282,19 +1295,29 @@ async function migrarPasswordsSiNecesario() {
   } catch (e) { console.error('Error en migración de contraseñas:', e); }
 }
 
-Promise.all([migrarPasswordsSiNecesario(), initEmail()]).then(async () => {
-  // Sincronización inicial de productos si la API externa está configurada
-  if (process.env.EXTERNAL_API_URL) {
-    console.log('  🔗 API externa configurada — sincronizando productos...');
-    const r = await getProductosExternos();
-    if (r?.ok) console.log(`  ✓ ${r.total} productos sincronizados desde API externa`);
-    else console.warn(`  ⚠ Sincronización inicial fallida: ${r?.error} — usando caché local`);
-  }
+async function main() {
+  try {
+    await migrarPasswordsSiNecesario();
+    await initEmail().catch(e => {
+      console.warn('  ⚠ Email no disponible, desactivado:', e.message);
+    });
 
-  app.listen(PORT, () => {
-    console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
-    console.log('   Credenciales demo:');
-    console.log('   Admin     → juangarciacardenas99@gmail.com / admin123');
-    console.log('   Proveedor → garcia@suministros.com / garcia123\n');
-  });
-});
+    if (process.env.EXTERNAL_API_URL) {
+      console.log('  🔗 API externa configurada — sincronizando productos...');
+      const r = await getProductosExternos();
+      if (r?.ok) console.log(`  ✓ ${r.total} productos sincronizados desde API externa`);
+      else console.warn(`  ⚠ Sincronización inicial fallida: ${r?.error} — usando caché local`);
+    }
+
+    app.listen(PORT, () => {
+      console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
+      console.log('   Credenciales demo:');
+      console.log('   Admin     → juangarciacardenas99@gmail.com / admin123');
+      console.log('   Proveedor → garcia@suministros.com / garcia123\n');
+    });
+  } catch (e) {
+    console.error('Error fatal al arrancar:', e.message);
+    process.exit(1);
+  }
+}
+main();

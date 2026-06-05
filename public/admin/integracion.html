@@ -134,8 +134,15 @@ async function init() {
 }
 
 async function cargar() {
-  const res = await fetch('/api/admin/integracion');
-  const data = await res.json();
+  let res, data;
+  try {
+    res = await fetch('/api/admin/integracion');
+    data = await res.json();
+  } catch {
+    document.getElementById('loading').innerHTML =
+      '<p class="text-muted text-sm">Error al comprobar la conexión. Recarga la página.</p>';
+    return;
+  }
 
   const badgeEl = document.getElementById('badge-estado');
   const bodyEl  = document.getElementById('body-estado');
@@ -156,6 +163,15 @@ async function cargar() {
         <div><div class="kpi-label">URL de la API</div><div class="text-sm fw-bold">${escapeHtml(data.url)}</div></div>
         <div><div class="kpi-label">Estado HTTP</div><div class="text-sm fw-bold">${data.codigo_http}</div></div>
       </div>
+    `;
+  } else if (data.estado === 'alcanzable') {
+    badgeEl.innerHTML = `<span class="badge badge-warning">⚠ Alcanzable (${data.codigo_http})</span>`;
+    bodyEl.innerHTML = `
+      <div class="alert alert-warning">
+        <strong>La API responde pero devuelve HTTP ${data.codigo_http}.</strong><br>
+        <span class="text-sm">Comprueba que la URL base sea correcta (puede que el endpoint raíz no exista).</span>
+      </div>
+      <p class="text-muted text-sm">URL configurada: <code>${escapeHtml(data.url)}</code></p>
     `;
   } else {
     badgeEl.innerHTML = '<span class="badge badge-danger">Error de conexión</span>';
@@ -187,9 +203,14 @@ async function cargarPendientes(total) {
   badge.textContent = total;
   badge.style.display = 'inline-flex';
 
-  // Cargar solicitudes pendientes
-  const res = await fetch('/api/solicitudes');
-  const solicitudes = await res.json();
+  let solicitudes;
+  try {
+    const res = await fetch('/api/solicitudes');
+    solicitudes = await res.json();
+  } catch {
+    body.innerHTML = '<p class="text-muted text-sm">Error al cargar pedidos pendientes.</p>';
+    return;
+  }
   const pendientes = solicitudes.filter(s => s.pendiente_envio_api);
 
   body.innerHTML = pendientes.length === 0

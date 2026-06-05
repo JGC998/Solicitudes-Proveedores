@@ -60,7 +60,7 @@
       </div>
       <div style="display:flex;gap:.5rem">
         <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importarCSV(this)">
-        <button class="btn btn-secondary" onclick="document.getElementById('csv-input').click()">⬆ Importar CSV</button>
+        <button id="btn-importar-csv" class="btn btn-secondary" onclick="document.getElementById('csv-input').click()">⬆ Importar CSV</button>
         <button class="btn btn-primary" onclick="abrirModal()">＋ Nuevo producto</button>
       </div>
     </div>
@@ -313,7 +313,8 @@ async function importarCSV(input) {
   const formData = new FormData();
   formData.append('csv', file);
 
-  const btn = document.querySelector('button[onclick*="csv-input"]');
+  const btn = document.getElementById('btn-importar-csv');
+  if (!btn) return;
   const textoOriginal = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Importando...';
