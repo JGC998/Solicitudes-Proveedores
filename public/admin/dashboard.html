@@ -39,6 +39,7 @@
         <span class="nav-icon">👥</span> Proveedores
       </a>
       <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+      <a href="/admin/integracion.html" class="nav-item"><span class="nav-icon">🔗</span> Integración API</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -66,6 +67,9 @@
     <div class="page-body">
       <div id="loading" class="loading"><div class="spinner"></div> Cargando datos...</div>
       <div id="content" class="hidden">
+
+        <!-- Alertas de vencimiento inminente -->
+        <div id="alertas-vencimiento"></div>
 
         <!-- KPIs -->
         <div class="kpi-grid" id="kpi-grid"></div>
@@ -141,6 +145,7 @@ async function loadData() {
     const kpis = await kpisRes.json();
     const solicitudes = await solicitudesRes.json();
 
+    renderAlertasVencimiento(solicitudes);
     renderKpis(kpis.kpis);
     renderCharts(kpis);
     renderSolicitudesRecientes(solicitudes.slice(0, 5));
@@ -228,6 +233,39 @@ function renderSolicitudesRecientes(list) {
       <td><a href="/admin/detalle.html?id=${s.id}" class="btn btn-secondary btn-sm">Ver detalle</a></td>
     </tr>
   `).join('');
+}
+
+function renderAlertasVencimiento(solicitudes) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const urgentes = solicitudes
+    .filter(s => s.estado === 'activa')
+    .map(s => {
+      const limite = new Date(s.fecha_limite + 'T00:00:00');
+      return { ...s, dias: Math.round((limite - hoy) / 86400000) };
+    })
+    .filter(s => s.dias <= 3)
+    .sort((a, b) => a.dias - b.dias);
+
+  const el = document.getElementById('alertas-vencimiento');
+  if (urgentes.length === 0) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div class="card mb-3" style="border-left:4px solid var(--danger)">
+      <div class="card-header" style="background:#fef2f2">
+        <span class="card-title" style="color:var(--danger)">⚠ ${urgentes.length} solicitud(es) próxima(s) a vencer</span>
+      </div>
+      <div class="card-body" style="padding:.6rem 1.4rem">
+        ${urgentes.map(s => {
+          const label = s.dias < 0 ? 'Vencida' : s.dias === 0 ? 'Hoy' : `${s.dias} día${s.dias > 1 ? 's' : ''}`;
+          const color = s.dias <= 0 ? 'badge-danger' : 'badge-warning';
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--border)">
+              <a href="/admin/detalle.html?id=${s.id}" style="font-weight:600;color:var(--text);text-decoration:none">${escapeHtml(s.titulo)}</a>
+              <span class="badge ${color}">${label}</span>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integración API — RFQ Manager</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="mobile-bar"><button class="hamburger-btn" onclick="toggleSidebar()">☰</button><span class="mobile-brand">RFQ Manager</span><div style="width:40px"></div></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="app-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">📋</div>
+      <span class="brand-name">RFQ Manager</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/admin/dashboard.html" class="nav-item"><span class="nav-icon">⊞</span> Dashboard</a>
+      <a href="/admin/solicitudes.html" class="nav-item"><span class="nav-icon">📄</span> Solicitudes</a>
+      <a href="/admin/nueva-solicitud.html" class="nav-item"><span class="nav-icon">＋</span> Nueva solicitud</a>
+      <a href="/admin/analisis.html" class="nav-item"><span class="nav-icon">📊</span> Análisis & KPIs</a>
+      <p class="sidebar-section-label">Configuración</p>
+      <a href="/admin/productos.html" class="nav-item"><span class="nav-icon">📦</span> Catálogo</a>
+      <a href="/admin/proveedores.html" class="nav-item"><span class="nav-icon">👥</span> Proveedores</a>
+      <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+      <a href="/admin/integracion.html" class="nav-item active"><span class="nav-icon">🔗</span> Integración API</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info-sidebar">
+          <div class="user-name-sidebar" id="user-name">Cargando...</div>
+          <div class="user-role-sidebar">Administrador</div>
+        </div>
+      </div>
+      <a href="/perfil.html" class="sidebar-perfil-link">⚙ Mi perfil</a>
+      <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Integración API externa</h1>
+        <p class="page-subtitle">Conexión con el sistema de gestión de la empresa</p>
+      </div>
+    </div>
+
+    <div class="page-body" style="max-width:760px">
+      <div id="loading" class="loading"><div class="spinner"></div> Comprobando conexión...</div>
+      <div id="content" class="hidden">
+
+        <!-- Estado de la conexión -->
+        <div class="card mb-3" id="card-estado">
+          <div class="card-header">
+            <span class="card-title">Estado de la conexión</span>
+            <span id="badge-estado"></span>
+          </div>
+          <div class="card-body" id="body-estado"></div>
+        </div>
+
+        <!-- Sincronización de productos -->
+        <div class="card mb-3" id="card-sync">
+          <div class="card-header">
+            <span class="card-title">Catálogo de productos</span>
+          </div>
+          <div class="card-body">
+            <p class="text-muted text-sm mb-2">
+              Sincroniza el catálogo de productos desde la base de datos de la empresa.
+              Los productos locales serán reemplazados con los datos de la API.
+            </p>
+            <button class="btn btn-primary" id="btn-sync" onclick="syncProductos()">
+              🔄 Sincronizar ahora
+            </button>
+            <div id="sync-resultado" style="margin-top:.8rem"></div>
+          </div>
+        </div>
+
+        <!-- Pedidos pendientes de envío -->
+        <div class="card mb-3" id="card-pendientes">
+          <div class="card-header">
+            <span class="card-title">Pedidos pendientes de envío</span>
+            <span class="badge badge-warning" id="badge-pendientes" style="display:none"></span>
+          </div>
+          <div id="body-pendientes" class="card-body">
+            <p class="text-muted text-sm">Cargando...</p>
+          </div>
+        </div>
+
+        <!-- Guía de configuración -->
+        <div class="card" id="card-guia" style="display:none">
+          <div class="card-header"><span class="card-title">⚙ Cómo configurar la integración</span></div>
+          <div class="card-body">
+            <ol style="padding-left:1.2rem;line-height:2">
+              <li>Abre el archivo <code>.env</code> en la raíz del proyecto</li>
+              <li>Añade la URL de la API de la empresa:<br>
+                <code style="background:#f1f5f9;padding:.2rem .5rem;border-radius:4px;display:inline-block;margin:.3rem 0">EXTERNAL_API_URL=https://api.tuempresa.com</code>
+              </li>
+              <li>Añade el token de autenticación si lo requiere:<br>
+                <code style="background:#f1f5f9;padding:.2rem .5rem;border-radius:4px;display:inline-block;margin:.3rem 0">EXTERNAL_API_KEY=tu-token-aqui</code>
+              </li>
+              <li>Reinicia el servidor — sincronizará los productos automáticamente</li>
+              <li>Consulta <strong>migracionAPI.md</strong> para adaptar el formato de los datos</li>
+            </ol>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/ui.js"></script>
+<script>
+async function init() {
+  try {
+    const me = await fetch('/api/auth/me');
+    if (!me.ok) return (window.location.href = '/login.html');
+    const { user } = await me.json();
+    if (user.rol !== 'admin') return (window.location.href = '/login.html');
+    document.getElementById('user-name').textContent = user.nombre;
+    document.getElementById('user-avatar').textContent = user.nombre[0].toUpperCase();
+    initHeader('admin');
+  } catch { return (window.location.href = '/login.html'); }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+  });
+
+  await cargar();
+}
+
+async function cargar() {
+  const res = await fetch('/api/admin/integracion');
+  const data = await res.json();
+
+  const badgeEl = document.getElementById('badge-estado');
+  const bodyEl  = document.getElementById('body-estado');
+
+  if (data.estado === 'no_configurada') {
+    badgeEl.innerHTML = '<span class="badge badge-warning">No configurada</span>';
+    bodyEl.innerHTML = `
+      <p class="text-muted text-sm">La integración con la API externa no está activada.</p>
+      <p class="text-muted text-sm">En modo demo, los productos se gestionan localmente y los pedidos no se envían automáticamente.</p>
+    `;
+    document.getElementById('card-sync').style.opacity = '.5';
+    document.getElementById('btn-sync').disabled = true;
+    document.getElementById('card-guia').style.display = '';
+  } else if (data.estado === 'conectada') {
+    badgeEl.innerHTML = '<span class="badge badge-success">✓ Conectada</span>';
+    bodyEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div><div class="kpi-label">URL de la API</div><div class="text-sm fw-bold">${escapeHtml(data.url)}</div></div>
+        <div><div class="kpi-label">Estado HTTP</div><div class="text-sm fw-bold">${data.codigo_http}</div></div>
+      </div>
+    `;
+  } else {
+    badgeEl.innerHTML = '<span class="badge badge-danger">Error de conexión</span>';
+    bodyEl.innerHTML = `
+      <div class="alert alert-danger">
+        <strong>No se pudo conectar con la API externa.</strong><br>
+        <span class="text-sm">${escapeHtml(data.mensaje || 'Código ' + data.codigo_http)}</span>
+      </div>
+      <p class="text-muted text-sm">URL configurada: <code>${escapeHtml(data.url)}</code></p>
+    `;
+  }
+
+  await cargarPendientes(data.pendientes_envio ?? 0);
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+async function cargarPendientes(total) {
+  const badge = document.getElementById('badge-pendientes');
+  const body  = document.getElementById('body-pendientes');
+
+  if (total === 0) {
+    badge.style.display = 'none';
+    body.innerHTML = '<p class="text-muted text-sm">No hay pedidos pendientes de envío.</p>';
+    return;
+  }
+
+  badge.textContent = total;
+  badge.style.display = 'inline-flex';
+
+  // Cargar solicitudes pendientes
+  const res = await fetch('/api/solicitudes');
+  const solicitudes = await res.json();
+  const pendientes = solicitudes.filter(s => s.pendiente_envio_api);
+
+  body.innerHTML = pendientes.length === 0
+    ? '<p class="text-muted text-sm">No hay pedidos pendientes de envío.</p>'
+    : `<div class="table-wrapper"><table>
+        <thead><tr><th>Solicitud</th><th>Nº Orden</th><th>Último error</th><th>Acción</th></tr></thead>
+        <tbody>
+          ${pendientes.map(s => `
+            <tr>
+              <td><a href="/admin/detalle.html?id=${s.id}">${escapeHtml(s.titulo)}</a></td>
+              <td><code>${escapeHtml(s.num_orden || '—')}</code></td>
+              <td class="text-muted text-sm">${escapeHtml(s.error_api || '—')}</td>
+              <td><button class="btn btn-secondary btn-sm" onclick="reintentarEnvio(${s.id}, this)">Reintentar</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+}
+
+async function syncProductos() {
+  const btn = document.getElementById('btn-sync');
+  const resultEl = document.getElementById('sync-resultado');
+  btn.disabled = true;
+  btn.textContent = 'Sincronizando...';
+  resultEl.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/admin/sync-productos', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      resultEl.innerHTML = `<div class="alert alert-success">✓ ${data.total} productos importados correctamente desde la API externa.</div>`;
+    } else {
+      resultEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error)}</div>`;
+    }
+  } catch {
+    resultEl.innerHTML = `<div class="alert alert-danger">Error de conexión al sincronizar.</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Sincronizar ahora';
+  }
+}
+
+async function reintentarEnvio(id, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    const res = await fetch(`/api/admin/reintentar-envio/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      btn.closest('tr').style.background = '#f0fdf4';
+      btn.textContent = '✓ Enviado';
+      setTimeout(() => cargar(), 1500);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Reintentar';
+      alert('Error al enviar: ' + (data.motivo || 'desconocido'));
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+    alert('Error de conexión');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

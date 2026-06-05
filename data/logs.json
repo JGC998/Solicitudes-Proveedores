@@ -1,5 +1,95 @@
 [
   {
+    "id": 15,
+    "fecha": "2026-06-05T10:11:38.328Z",
+    "user_id": 1,
+    "user_nombre": "Empresa Ejemplo SA",
+    "accion": "adjudicacion",
+    "descripcion": "Pedido adjudicado a \"Distribuciones Martínez\" para \"Material de oficina\"",
+    "referencia_id": 3,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 14,
+    "fecha": "2026-06-05T10:11:15.089Z",
+    "user_id": 3,
+    "user_nombre": "Distribuciones Martínez",
+    "accion": "cotizacion_enviada",
+    "descripcion": "Distribuciones Martínez envió cotización para \"Material de oficina\"",
+    "referencia_id": 3,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 13,
+    "fecha": "2026-06-05T10:10:32.704Z",
+    "user_id": 2,
+    "user_nombre": "Suministros García SL",
+    "accion": "cotizacion_enviada",
+    "descripcion": "Suministros García SL envió cotización para \"Material de oficina\"",
+    "referencia_id": 3,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 12,
+    "fecha": "2026-06-05T10:09:45.420Z",
+    "user_id": 1,
+    "user_nombre": "Empresa Ejemplo SA",
+    "accion": "solicitud_creada",
+    "descripcion": "Solicitud creada: \"Material de oficina\"",
+    "referencia_id": 3,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 11,
+    "fecha": "2026-06-05T09:58:53.618Z",
+    "user_id": 4,
+    "user_nombre": "Componentes López SA",
+    "accion": "cotizacion_enviada",
+    "descripcion": "Componentes López SA envió cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 10,
+    "fecha": "2026-06-05T09:57:34.584Z",
+    "user_id": 3,
+    "user_nombre": "Distribuciones Martínez",
+    "accion": "cotizacion_enviada",
+    "descripcion": "Distribuciones Martínez envió cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 9,
+    "fecha": "2026-06-05T09:56:47.143Z",
+    "user_id": 2,
+    "user_nombre": "Suministros García SL",
+    "accion": "cotizacion_enviada",
+    "descripcion": "Suministros García SL envió cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 8,
+    "fecha": "2026-06-05T09:55:02.710Z",
+    "user_id": 1,
+    "user_nombre": "Empresa Ejemplo SA",
+    "accion": "solicitud_creada",
+    "descripcion": "Solicitud creada: \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "tipo_referencia": "solicitud"
+  },
+  {
+    "id": 7,
+    "fecha": "2026-06-05T09:51:21.571Z",
+    "user_id": 1,
+    "user_nombre": "Empresa Ejemplo SA",
+    "accion": "solicitud_creada",
+    "descripcion": "Solicitud creada: \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "tipo_referencia": "solicitud"
+  },
+  {
     "id": 6,
     "fecha": "2026-06-05T08:56:35.437Z",
     "user_id": 1,

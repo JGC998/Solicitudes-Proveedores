@@ -29,5 +29,56 @@
         "cantidad": 1
       }
     ]
+  },
+  {
+    "id": 2,
+    "titulo": "TORNILLERIA",
+    "descripcion": "",
+    "fecha_creacion": "2026-06-05",
+    "fecha_limite": "2026-06-12",
+    "estado": "activa",
+    "proveedores_invitados": [],
+    "productos": [
+      {
+        "producto_id": 1,
+        "cantidad": 10
+      },
+      {
+        "producto_id": 2,
+        "cantidad": 10
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "titulo": "Material de oficina",
+    "descripcion": "",
+    "fecha_creacion": "2026-06-05",
+    "fecha_limite": "2026-06-12",
+    "estado": "activa",
+    "proveedores_invitados": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "productos": [
+      {
+        "producto_id": 3,
+        "cantidad": 1
+      },
+      {
+        "producto_id": 4,
+        "cantidad": 10
+      },
+      {
+        "producto_id": 5,
+        "cantidad": 1
+      },
+      {
+        "producto_id": 10,
+        "cantidad": 1
+      }
+    ]
   }
 ]

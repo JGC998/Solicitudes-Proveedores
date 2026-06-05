@@ -1,5 +1,86 @@
 [
   {
+    "id": 15,
+    "user_id": 3,
+    "tipo": "adjudicado",
+    "mensaje": "✅ Tu cotización para \"Material de oficina\" ha sido seleccionada",
+    "referencia_id": 3,
+    "fecha": "2026-06-05T10:11:38.331Z",
+    "leida": false
+  },
+  {
+    "id": 14,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Distribuciones Martínez ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 3,
+    "fecha": "2026-06-05T10:11:15.092Z",
+    "leida": false
+  },
+  {
+    "id": 13,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Suministros García SL ha enviado cotización para \"Material de oficina\"",
+    "referencia_id": 3,
+    "fecha": "2026-06-05T10:10:32.707Z",
+    "leida": false
+  },
+  {
+    "id": 12,
+    "user_id": 5,
+    "tipo": "nueva_solicitud",
+    "mensaje": "Nueva solicitud: \"Material de oficina\"",
+    "referencia_id": 3,
+    "fecha": "2026-06-05T10:09:45.424Z",
+    "leida": false
+  },
+  {
+    "id": 11,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Componentes López SA ha enviado cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "fecha": "2026-06-05T09:58:53.622Z",
+    "leida": false
+  },
+  {
+    "id": 10,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Distribuciones Martínez ha enviado cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "fecha": "2026-06-05T09:57:34.585Z",
+    "leida": false
+  },
+  {
+    "id": 9,
+    "user_id": 1,
+    "tipo": "nueva_cotizacion",
+    "mensaje": "Suministros García SL ha enviado cotización para \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "fecha": "2026-06-05T09:56:47.144Z",
+    "leida": false
+  },
+  {
+    "id": 8,
+    "user_id": 6,
+    "tipo": "nueva_solicitud",
+    "mensaje": "Nueva solicitud: \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "fecha": "2026-06-05T09:55:02.712Z",
+    "leida": false
+  },
+  {
+    "id": 7,
+    "user_id": 2,
+    "tipo": "nueva_solicitud",
+    "mensaje": "Nueva solicitud: \"TORNILLERIA\"",
+    "referencia_id": 2,
+    "fecha": "2026-06-05T09:51:21.573Z",
+    "leida": false
+  },
+  {
     "id": 6,
     "user_id": 5,
     "tipo": "no_adjudicado",
@@ -52,5 +133,7 @@
     "referencia_id": 1,
     "fecha": "2026-06-05T08:50:56.354Z",
     "leida": false
+  }
+]e
   }
 ]

@@ -57,7 +57,7 @@
       <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
       <div id="content" class="hidden">
 
-        <div class="kpi-grid" id="kpi-grid" style="grid-template-columns:repeat(3,1fr);max-width:520px;margin-bottom:1.5rem"></div>
+        <div class="kpi-grid" id="kpi-grid" style="grid-template-columns:repeat(2,1fr);max-width:700px;margin-bottom:1.5rem"></div>
 
         <div id="lista-cotizaciones"></div>
         <div id="pag-hist" class="paginacion"></div>
@@ -123,7 +123,9 @@ async function loadHistorial() {
 
   // KPIs
   const total = cotizaciones.length;
-  const totalProductos = cotizaciones.reduce((sum, c) => sum + c.lineas.length, 0);
+  const adjudicadas = cotizaciones.filter(c => c.adjudicada === true).length;
+  const noSeleccionadas = cotizaciones.filter(c => c.adjudicada === false).length;
+  const tasaExito = total > 0 ? Math.round((adjudicadas / total) * 100) : 0;
   const totalImporte = cotizaciones.reduce((sum, c) => {
     return sum + c.lineas.reduce((s, l) => {
       const cant = c.solicitud?.productos?.find(p => p.producto_id === l.producto_id)?.cantidad || 1;
@@ -135,14 +137,22 @@ async function loadHistorial() {
     <div class="kpi-card kpi-primary">
       <div class="kpi-label">Cotizaciones enviadas</div>
       <div class="kpi-value">${total}</div>
+      <div class="kpi-sub">${noSeleccionadas > 0 ? `${noSeleccionadas} no seleccionadas` : 'Sin resultados aún'}</div>
     </div>
     <div class="kpi-card kpi-success">
-      <div class="kpi-label">Líneas de producto</div>
-      <div class="kpi-value">${totalProductos}</div>
+      <div class="kpi-label">Adjudicaciones ganadas</div>
+      <div class="kpi-value">${adjudicadas}</div>
+      <div class="kpi-sub">${total > 0 ? `de ${total} cotizaciones enviadas` : '—'}</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-label">Tasa de éxito</div>
+      <div class="kpi-value">${tasaExito}%</div>
+      <div class="kpi-sub">${adjudicadas} ganadas / ${total} enviadas</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Importe total cotizado</div>
       <div class="kpi-value" style="font-size:1.4rem">${totalImporte.toFixed(0)} €</div>
+      <div class="kpi-sub">suma de todos los presupuestos</div>
     </div>
   `;
 

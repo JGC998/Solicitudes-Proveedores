@@ -37,6 +37,7 @@
         <span class="nav-icon">👥</span> Proveedores
       </a>
       <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+      <a href="/admin/integracion.html" class="nav-item"><span class="nav-icon">🔗</span> Integración API</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -196,6 +197,13 @@ function renderTabla() {
   if (estado) lista = lista.filter(s => s.estado === estado);
   if (buscar) lista = lista.filter(s => s.titulo.toLowerCase().includes(buscar));
 
+  // Activas arriba, borradores en medio, cerradas abajo; dentro de cada grupo por fecha_limite ASC
+  const ORDEN = { activa: 0, borrador: 1, cerrada: 2 };
+  lista = [...lista].sort((a, b) => {
+    const d = (ORDEN[a.estado] ?? 2) - (ORDEN[b.estado] ?? 2);
+    return d !== 0 ? d : a.fecha_limite.localeCompare(b.fecha_limite);
+  });
+
   const totalPags = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
   if (paginaActual > totalPags) paginaActual = 1;
   const slice = lista.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
@@ -207,16 +215,25 @@ function renderTabla() {
     return;
   }
 
+  const ROW_STYLE = {
+    activa:  'box-shadow:inset 3px 0 0 #10b981',
+    borrador:'box-shadow:inset 3px 0 0 #f59e0b;background:#fffbeb',
+    cerrada: 'box-shadow:inset 3px 0 0 #94a3b8;background:#f8fafc'
+  };
+  const TEXT_MUTED_CERRADA = 'color:#94a3b8';
+
   tbody.innerHTML = slice.map(s => {
     const prods = s.productos.map(p => `<span class="product-pill">${escapeHtml(p.producto?.nombre || 'Producto')}</span>`).join('');
     const urgBadge = s.estado === 'activa' ? badgeUrgencia(s.fecha_limite) : '';
+    const rowStyle = ROW_STYLE[s.estado] || '';
+    const dimStyle = s.estado === 'cerrada' ? TEXT_MUTED_CERRADA : '';
     return `
-      <tr>
-        <td><strong>${escapeHtml(s.titulo)}</strong></td>
-        <td class="text-muted text-sm">${s.descripcion ? escapeHtml(s.descripcion.substring(0, 60)) + '...' : '—'}</td>
-        <td>${prods}</td>
-        <td class="text-muted text-sm">${s.fecha_creacion}</td>
-        <td class="text-muted text-sm">${s.fecha_limite} ${urgBadge}</td>
+      <tr style="${rowStyle}">
+        <td style="${dimStyle}"><strong>${escapeHtml(s.titulo)}</strong></td>
+        <td class="text-muted text-sm" style="${dimStyle}">${s.descripcion ? escapeHtml(s.descripcion.substring(0, 60)) + '...' : '—'}</td>
+        <td style="${dimStyle}">${prods}</td>
+        <td class="text-muted text-sm" style="${dimStyle}">${s.fecha_creacion}</td>
+        <td class="text-muted text-sm" style="${dimStyle}">${s.fecha_limite} ${urgBadge}</td>
         <td>
           <select class="form-control" style="width:auto;padding:.25rem .5rem;font-size:.8rem" onchange="cambiarEstado(${s.id}, this.value)">
             <option value="activa" ${s.estado === 'activa' ? 'selected' : ''}>Activa</option>

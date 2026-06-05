@@ -1,12 +1,62 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const nodemailer = require('nodemailer');
 const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
+
+// ─── Multer: subida de archivos en memoria ────────────────────────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }
+});
+
+// ─── Email (Nodemailer) ───────────────────────────────────────────────────────
+let transporter = null;
+
+async function initEmail() {
+  const pass = process.env.SMTP_PASS;
+  if (pass && pass !== 'AQUI_TU_APP_PASSWORD_DE_GMAIL') {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      auth: {
+        user: process.env.SMTP_USER || 'juangarciacardenas99@gmail.com',
+        pass
+      }
+    });
+    console.log(`  📧 Email configurado: ${process.env.SMTP_USER || 'juangarciacardenas99@gmail.com'}`);
+  } else {
+    const account = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      auth: { user: account.user, pass: account.pass }
+    });
+    console.log(`  📧 Email en modo prueba (Ethereal) — edita SMTP_PASS en .env para usar Gmail`);
+    console.log(`  📬 Ver emails: https://ethereal.email/messages`);
+  }
+}
+
+const EMAIL_FROM = `"RFQ Manager" <${process.env.SMTP_USER || 'juangarciacardenas99@gmail.com'}>`;
+
+async function sendEmail(to, subject, html) {
+  if (!transporter) return;
+  try {
+    const info = await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
+    const preview = nodemailer.getTestMessageUrl(info);
+    if (preview) console.log(`  📧 Email → ${to} | Vista previa: ${preview}`);
+    else console.log(`  📧 Email enviado → ${to}`);
+  } catch (e) {
+    console.error(`  ⚠ Error al enviar email a ${to}:`, e.message);
+  }
+}
 
 // ─── SSE: clientes conectados ──────────────────────────────────────────────────
 const sseClients = new Set();
@@ -170,6 +220,54 @@ app.delete('/api/productos/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Importar productos desde CSV ────────────────────────────────────────────
+app.post('/api/productos/importar', requireAdmin, upload.single('csv'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' });
+
+    const text = req.file.buffer.toString('utf8').replace(/^﻿/, '');
+    const sep = text.includes(';') ? ';' : ',';
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return res.status(400).json({ error: 'El archivo no tiene datos' });
+
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const iNombre    = headers.indexOf('nombre');
+    const iUnidad    = headers.indexOf('unidad');
+    const iCategoria = ['categoria','categoría'].reduce((f, k) => f !== -1 ? f : headers.indexOf(k), -1);
+    const iDesc      = ['descripcion','descripción'].reduce((f, k) => f !== -1 ? f : headers.indexOf(k), -1);
+
+    if (iNombre === -1 || iUnidad === -1)
+      return res.status(400).json({ error: 'El CSV debe tener columnas "nombre" y "unidad"' });
+
+    const productos = await readData('productos.json');
+    let añadidos = 0, omitidos = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''));
+      const nombre = cols[iNombre] || '';
+      const unidad = cols[iUnidad] || '';
+      if (!nombre || !unidad) { omitidos++; continue; }
+      if (productos.find(p => p.nombre.toLowerCase() === nombre.toLowerCase())) { omitidos++; continue; }
+      productos.push({
+        id: nextId(productos),
+        nombre,
+        descripcion: iDesc !== -1 ? (cols[iDesc] || '') : '',
+        unidad,
+        categoria: iCategoria !== -1 ? (cols[iCategoria] || '') : ''
+      });
+      añadidos++;
+    }
+
+    if (añadidos > 0) await writeData('productos.json', productos);
+    await registrarLog(req.session.user, 'productos_importados', `${añadidos} productos importados desde CSV`);
+    res.json({ añadidos, omitidos });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al procesar el CSV' });
+  }
+});
+
 // ─── Solicitudes ──────────────────────────────────────────────────────────────
 app.get('/api/solicitudes', requireAuth, async (req, res) => {
   try {
@@ -279,6 +377,27 @@ app.post('/api/solicitudes', requireAdmin, async (req, res) => {
       : provs;
     await Promise.all(destinatarios.map(p =>
       crearNotificacion(p.id, 'nueva_solicitud', `Nueva solicitud: "${nueva.titulo}"`, nueva.id)
+    ));
+
+    const baseUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    destinatarios.forEach(p => sendEmail(
+      p.email_notificaciones || p.email,
+      `Nueva solicitud de presupuesto: "${nueva.titulo}"`,
+      `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+         <h2 style="color:#2563eb">📋 Nueva solicitud de presupuesto</h2>
+         <p>Hola <strong>${p.nombre}</strong>,</p>
+         <p>Se ha publicado una nueva solicitud de presupuesto en la que estás invitado a participar:</p>
+         <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:1rem 1.2rem;margin:1rem 0;border-radius:4px">
+           <p style="margin:0;font-size:1.1em;font-weight:700">${nueva.titulo}</p>
+           ${nueva.descripcion ? `<p style="margin:.5rem 0 0;color:#64748b">${nueva.descripcion}</p>` : ''}
+           <p style="margin:.5rem 0 0;color:#64748b">📅 Fecha límite: <strong>${nueva.fecha_limite}</strong></p>
+         </div>
+         <a href="${baseUrl}/proveedor/cotizar.html?id=${nueva.id}"
+            style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
+           Enviar cotización →
+         </a>
+         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${baseUrl}" style="color:#94a3b8">${baseUrl}</a></p>
+       </div>`
     ));
 
     broadcast('nueva_solicitud', { solicitud_id: nueva.id, titulo: nueva.titulo });
@@ -401,6 +520,24 @@ app.post('/api/cotizaciones', requireProveedor, async (req, res) => {
       crearNotificacion(a.id, 'nueva_cotizacion',
         `${req.session.user.nombre} ha enviado cotización para "${solData?.titulo}"`, solicitud_id)
     ));
+    const appUrlCot = process.env.APP_URL || `http://localhost:${PORT}`;
+    admins.forEach(a => sendEmail(
+      a.email,
+      `💬 Nueva cotización recibida — ${solData?.titulo}`,
+      `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+         <h2 style="color:#2563eb">💬 Nueva cotización recibida</h2>
+         <p>Hola <strong>${a.nombre}</strong>,</p>
+         <p><strong>${req.session.user.nombre}</strong> ha enviado una cotización para la solicitud:</p>
+         <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:1rem 1.2rem;margin:1rem 0;border-radius:4px">
+           <p style="margin:0;font-size:1.1em;font-weight:700">${solData?.titulo}</p>
+         </div>
+         <a href="${appUrlCot}/admin/detalle.html?id=${solicitud_id}"
+            style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
+           Ver comparativa de precios →
+         </a>
+         <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrlCot}" style="color:#94a3b8">${appUrlCot}</a></p>
+       </div>`
+    ));
 
     broadcast('nueva_cotizacion', { solicitud_id, proveedor: req.session.user.nombre, titulo: solData?.titulo });
     res.status(201).json(nueva);
@@ -511,10 +648,40 @@ app.patch('/api/cotizaciones/:id/adjudicar', requireAdmin, async (req, res) => {
     // Notificar a todos los que cotizaron
     broadcast('adjudicacion', { solicitud_id: cot.solicitud_id });
     cotizaciones.filter(c => c.solicitud_id === cot.solicitud_id).forEach(c => {
-      const msg = c.id === cot.id
+      const ganó = c.id === cot.id;
+      const msg = ganó
         ? `✅ Tu cotización para "${solData2?.titulo}" ha sido seleccionada`
         : `Tu cotización para "${solData2?.titulo}" no fue seleccionada esta vez`;
-      crearNotificacion(c.proveedor_id, c.id === cot.id ? 'adjudicado' : 'no_adjudicado', msg, cot.solicitud_id);
+      crearNotificacion(c.proveedor_id, ganó ? 'adjudicado' : 'no_adjudicado', msg, cot.solicitud_id);
+      const prov = allU2.find(u => u.id === c.proveedor_id);
+      const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+      if (prov) sendEmail(
+        prov.email_notificaciones || prov.email,
+        ganó ? `✅ Tu cotización ha sido seleccionada — ${solData2?.titulo}` : `Resultado de la solicitud: ${solData2?.titulo}`,
+        ganó
+          ? `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+               <h2 style="color:#10b981">✅ ¡Cotización seleccionada!</h2>
+               <p>Hola <strong>${prov.nombre}</strong>,</p>
+               <p>¡Enhorabuena! Tu cotización para la solicitud <strong>"${solData2?.titulo}"</strong> ha sido seleccionada.</p>
+               <p>El equipo de compras se pondrá en contacto contigo en breve para coordinar el pedido.</p>
+               <a href="${appUrl}/proveedor/historial.html"
+                  style="display:inline-block;background:#10b981;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
+                 Ver mis cotizaciones →
+               </a>
+               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrl}" style="color:#94a3b8">${appUrl}</a></p>
+             </div>`
+          : `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+               <h2 style="color:#64748b">Resultado de la solicitud</h2>
+               <p>Hola <strong>${prov.nombre}</strong>,</p>
+               <p>Tu cotización para <strong>"${solData2?.titulo}"</strong> no fue seleccionada en esta ocasión.</p>
+               <p>Gracias por participar. Seguiremos contando contigo en futuras solicitudes.</p>
+               <a href="${appUrl}/proveedor/dashboard.html"
+                  style="display:inline-block;background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:600;margin:1rem 0">
+                 Ver solicitudes activas →
+               </a>
+               <p style="color:#94a3b8;font-size:.8em;margin-top:1.5rem">RFQ Manager · <a href="${appUrl}" style="color:#94a3b8">${appUrl}</a></p>
+             </div>`
+      );
     });
 
     res.json({ ok: true });
@@ -810,9 +977,29 @@ app.post('/api/solicitudes/:id/orden-compra', requireAdmin, async (req, res) => 
     const num = `OC-${new Date().getFullYear()}-${String(parseInt(req.params.id)).padStart(4, '0')}`;
     solicitudes[idx].num_orden = num;
     solicitudes[idx].fecha_orden = new Date().toISOString().split('T')[0];
+
+    // Intentar enviar el pedido a la API externa
+    const cotizaciones = await readData('cotizaciones.json');
+    const cotAdj = cotizaciones.find(c => c.solicitud_id === solicitudes[idx].id && c.adjudicada === true);
+    if (cotAdj) {
+      const [allUsers, allProds] = await Promise.all([readData('users.json'), readData('productos.json')]);
+      const prov = allUsers.find(u => u.id === cotAdj.proveedor_id);
+      const resultadoApi = await pushPedidoExterno(solicitudes[idx], cotAdj, prov, allProds);
+      if (resultadoApi.motivo === 'sin_api') {
+        // No hay API configurada, es normal en modo demo
+      } else if (resultadoApi.ok) {
+        solicitudes[idx].pendiente_envio_api = false;
+        if (resultadoApi.id_externo) solicitudes[idx].id_api_externa = resultadoApi.id_externo;
+      } else {
+        solicitudes[idx].pendiente_envio_api = true;
+        solicitudes[idx].error_api = resultadoApi.motivo;
+        console.warn(`  ⚠ Pedido ${num} no pudo enviarse a API externa: ${resultadoApi.motivo}`);
+      }
+    }
+
     await writeData('solicitudes.json', solicitudes);
     await registrarLog(req.session.user, 'orden_compra_generada', `Orden ${num} generada para "${solicitudes[idx].titulo}"`, solicitudes[idx].id, 'solicitud');
-    res.json({ num_orden: num, fecha_orden: solicitudes[idx].fecha_orden });
+    res.json({ num_orden: num, fecha_orden: solicitudes[idx].fecha_orden, pendiente_envio_api: solicitudes[idx].pendiente_envio_api ?? false });
   } catch (e) { res.status(500).json({ error: 'Error al generar orden' }); }
 });
 
@@ -904,6 +1091,176 @@ app.get('/api/eventos', requireAuth, (req, res) => {
   req.on('close', () => sseClients.delete(client));
 });
 
+// ─── Adaptador API Externa ────────────────────────────────────────────────────
+// Capa de abstracción entre RFQ Manager y el sistema de gestión de la empresa.
+// Hoy usa JSON locales como fallback. Cuando llegue la URL real, solo cambia
+// la implementación interna sin tocar las rutas ni el frontend.
+
+async function getProductosExternos() {
+  const url = process.env.EXTERNAL_API_URL;
+  const key = process.env.EXTERNAL_API_KEY || '';
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url}/productos`, {
+      headers: { 'Authorization': `Bearer ${key}`, 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) throw new Error(`API respondió ${res.status}`);
+    const raw = await res.json();
+
+    // ── Normalización de campos ──────────────────────────────────────────────
+    // Mapeo basado en el esquema real de la empresa (ver migracionAPI.md).
+    // Acepta tanto snake_case como camelCase por si la API formatea distinto.
+    const lista = Array.isArray(raw) ? raw : (raw.data ?? raw.articulos ?? raw.items ?? []);
+    const productos = lista.map((p, i) => ({
+      // ID interno secuencial — no usar el codigo_articulo como ID porque es
+      // alfanumérico y rompería la lógica de cotizaciones (siempre numérica)
+      id:              i + 1,
+      // Código real del artículo en el sistema de la empresa
+      codigo_articulo: String(p.codigo_articulo ?? p.codigoArticulo ?? p.CODIGO_ARTICULO ?? i + 1),
+      nombre:          p.nombre_articulo  ?? p.nombreArticulo  ?? p.NOMBRE_ARTICULO  ?? p.nombre ?? 'Sin nombre',
+      // Descripción enriquecida: marca · subfamilia (si vienen en el JOIN)
+      descripcion: [
+        p.nombre_marca        ?? p.nombreMarca        ?? p.NOMBRE_MARCA        ?? '',
+        p.nombre_subfamilia   ?? p.nombreSubfamilia   ?? p.NOMBRE_SUBFAMILIA   ?? ''
+      ].filter(Boolean).join(' · '),
+      // Unidades por caja → "unidad" si es 1, "caja/Nu" si es mayor
+      unidad:    (() => {
+        const upc = p.unidades_por_caja ?? p.unidadesPorCaja ?? p.UNIDADES_POR_CAJA ?? 1;
+        if (!upc || upc <= 1) return 'unidad';
+        const n = Number.isInteger(upc) ? upc : parseFloat(upc.toFixed(2));
+        return `caja/${n}u`;
+      })(),
+      categoria:   p.nombre_familia ?? p.nombreFamilia ?? p.NOMBRE_FAMILIA ?? '',
+      codigo_barras: p.codigo_barras ?? p.codigoBarras ?? p.CODIGO_BARRAS ?? ''
+    }));
+
+    await writeData('productos.json', productos);
+    return { ok: true, total: productos.length };
+  } catch (e) {
+    console.error('  ⚠ Error al sincronizar productos desde API externa:', e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+async function pushPedidoExterno(solicitud, cotizacion, proveedor, productos) {
+  const url = process.env.EXTERNAL_API_URL;
+  const key = process.env.EXTERNAL_API_KEY || '';
+  if (!url) return { ok: false, motivo: 'sin_api' };
+
+  // ── Payload enviado a la API externa ────────────────────────────────────────
+  // Adapta los nombres de campo al formato que espera la API real.
+  // Ver migracionAPI.md → sección "Paso 3: Adaptar el envío de pedidos".
+  const payload = {
+    referencia:   solicitud.num_orden,
+    fecha_pedido: solicitud.fecha_orden,
+    proveedor: {
+      id:     proveedor.id,
+      nombre: proveedor.nombre,
+      email:  proveedor.email_notificaciones ?? proveedor.email
+    },
+    lineas: cotizacion.lineas.map(l => {
+      const prod = productos.find(p => p.id === l.producto_id);
+      const cant = solicitud.productos.find(p => p.producto_id === l.producto_id)?.cantidad ?? 1;
+      return {
+        // codigo_articulo es el ID real en el sistema de la empresa
+        codigo_articulo: prod?.codigo_articulo ?? String(l.producto_id),
+        codigo_barras:   prod?.codigo_barras   ?? '',
+        producto_nombre: prod?.nombre          ?? 'Desconocido',
+        cantidad:        cant,
+        unidades_por_caja: prod?.unidad        ?? 'unidad',
+        precio_unitario: l.precio_unitario,
+        plazo_entrega:   l.plazo_entrega       ?? null,
+        total_linea:     parseFloat((l.precio_unitario * cant).toFixed(2))
+      };
+    }),
+    total_pedido: parseFloat(cotizacion.lineas.reduce((sum, l) => {
+      const cant = solicitud.productos.find(p => p.producto_id === l.producto_id)?.cantidad ?? 1;
+      return sum + l.precio_unitario * cant;
+    }, 0).toFixed(2))
+  };
+
+  try {
+    const res = await fetch(`${url}/pedidos`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type':  'application/json',
+        'Accept':        'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`${res.status}: ${body.slice(0, 300)}`);
+    }
+    const respuesta = await res.json();
+    return { ok: true, id_externo: respuesta.id ?? respuesta.pedido_id ?? null };
+  } catch (e) {
+    console.error('  ⚠ Error al enviar pedido a API externa:', e.message);
+    return { ok: false, motivo: e.message };
+  }
+}
+
+// ─── Endpoints de integración (admin) ────────────────────────────────────────
+app.get('/api/admin/integracion', requireAdmin, async (req, res) => {
+  const url = process.env.EXTERNAL_API_URL;
+  if (!url) {
+    return res.json({
+      estado: 'no_configurada',
+      mensaje: 'EXTERNAL_API_URL no está definida en .env. Configúrala y reinicia el servidor.'
+    });
+  }
+  try {
+    const test = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${process.env.EXTERNAL_API_KEY || ''}` },
+      signal: AbortSignal.timeout(5000)
+    });
+    const solicitudes = await readData('solicitudes.json');
+    res.json({
+      estado: test.status < 500 ? 'conectada' : 'error',
+      codigo_http: test.status,
+      url,
+      pendientes_envio: solicitudes.filter(s => s.pendiente_envio_api).length
+    });
+  } catch (e) {
+    res.json({ estado: 'error', mensaje: e.message, url });
+  }
+});
+
+app.post('/api/admin/sync-productos', requireAdmin, async (req, res) => {
+  const resultado = await getProductosExternos();
+  if (!resultado) return res.status(400).json({ error: 'EXTERNAL_API_URL no está configurada en .env' });
+  if (!resultado.ok) return res.status(502).json({ error: resultado.error });
+  await registrarLog(req.session.user, 'sync_productos_api', `${resultado.total} productos sincronizados desde API externa`);
+  res.json(resultado);
+});
+
+app.post('/api/admin/reintentar-envio/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [solicitudes, cotizaciones, users, productos] = await Promise.all([
+      readData('solicitudes.json'), readData('cotizaciones.json'),
+      readData('users.json'),       readData('productos.json')
+    ]);
+    const idx = solicitudes.findIndex(s => s.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Solicitud no encontrada' });
+    const cotizacion = cotizaciones.find(c => c.solicitud_id === id && c.adjudicada === true);
+    if (!cotizacion) return res.status(400).json({ error: 'No hay cotización adjudicada para esta solicitud' });
+    const proveedor = users.find(u => u.id === cotizacion.proveedor_id);
+    const resultado = await pushPedidoExterno(solicitudes[idx], cotizacion, proveedor, productos);
+    if (resultado.ok) {
+      solicitudes[idx].pendiente_envio_api = false;
+      if (resultado.id_externo) solicitudes[idx].id_api_externa = resultado.id_externo;
+      await writeData('solicitudes.json', solicitudes);
+      await registrarLog(req.session.user, 'pedido_enviado_api', `Pedido ${solicitudes[idx].num_orden} enviado a API externa`, id, 'solicitud');
+    }
+    res.json(resultado);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Root redirect ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.redirect('/login.html'));
 
@@ -925,11 +1282,19 @@ async function migrarPasswordsSiNecesario() {
   } catch (e) { console.error('Error en migración de contraseñas:', e); }
 }
 
-migrarPasswordsSiNecesario().then(() => {
+Promise.all([migrarPasswordsSiNecesario(), initEmail()]).then(async () => {
+  // Sincronización inicial de productos si la API externa está configurada
+  if (process.env.EXTERNAL_API_URL) {
+    console.log('  🔗 API externa configurada — sincronizando productos...');
+    const r = await getProductosExternos();
+    if (r?.ok) console.log(`  ✓ ${r.total} productos sincronizados desde API externa`);
+    else console.warn(`  ⚠ Sincronización inicial fallida: ${r?.error} — usando caché local`);
+  }
+
   app.listen(PORT, () => {
     console.log(`\n✅ RFQ Manager corriendo en http://localhost:${PORT}\n`);
     console.log('   Credenciales demo:');
-    console.log('   Admin     → admin@empresa.com / admin123');
+    console.log('   Admin     → juangarciacardenas99@gmail.com / admin123');
     console.log('   Proveedor → garcia@suministros.com / garcia123\n');
   });
 });

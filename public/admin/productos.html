@@ -37,6 +37,7 @@
         <span class="nav-icon">👥</span> Proveedores
       </a>
       <a href="/admin/logs.html" class="nav-item"><span class="nav-icon">📜</span> Actividad</a>
+      <a href="/admin/integracion.html" class="nav-item"><span class="nav-icon">🔗</span> Integración API</a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -57,11 +58,19 @@
         <h1 class="page-title">Catálogo de productos</h1>
         <p class="page-subtitle">Gestiona los productos disponibles para solicitudes de presupuesto</p>
       </div>
-      <button class="btn btn-primary" onclick="abrirModal()">＋ Nuevo producto</button>
+      <div style="display:flex;gap:.5rem">
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importarCSV(this)">
+        <button class="btn btn-secondary" onclick="document.getElementById('csv-input').click()">⬆ Importar CSV</button>
+        <button class="btn btn-primary" onclick="abrirModal()">＋ Nuevo producto</button>
+      </div>
     </div>
 
     <div class="page-body">
       <div id="alert-area"></div>
+
+      <p class="text-muted text-sm" style="margin-bottom:.5rem">
+        El CSV debe tener las columnas: <code>nombre</code>, <code>unidad</code> (obligatorias) · <code>categoria</code>, <code>descripcion</code> (opcionales). Separador: <code>;</code> o <code>,</code>
+      </p>
 
       <div id="loading" class="loading"><div class="spinner"></div> Cargando...</div>
 
@@ -295,6 +304,37 @@ function mostrarAlertaGlobal(msg, tipo) {
   const el = document.getElementById('alert-area');
   el.innerHTML = `<div class="alert alert-${tipo}">${msg}</div>`;
   setTimeout(() => { el.innerHTML = ''; }, 3000);
+}
+
+async function importarCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('csv', file);
+
+  const btn = document.querySelector('button[onclick*="csv-input"]');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Importando...';
+
+  try {
+    const res = await fetch('/api/productos/importar', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (res.ok) {
+      const msg = `✓ ${data.añadidos} producto(s) importado(s)${data.omitidos > 0 ? `, ${data.omitidos} omitido(s) (ya existían o faltaban campos)` : ''}.`;
+      mostrarAlertaGlobal(msg, 'success');
+      await cargarProductos();
+    } else {
+      mostrarAlertaGlobal(data.error || 'Error al importar.', 'warning');
+    }
+  } catch {
+    mostrarAlertaGlobal('Error de conexión al importar.', 'warning');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+    input.value = '';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

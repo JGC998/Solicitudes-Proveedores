@@ -138,5 +138,125 @@
         "plazo_entrega": null
       }
     ]
+  },
+  {
+    "id": 5,
+    "solicitud_id": 2,
+    "proveedor_id": 2,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 19,
+        "plazo_entrega": null
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 20,
+        "plazo_entrega": null
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "solicitud_id": 2,
+    "proveedor_id": 3,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 15,
+        "plazo_entrega": null
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 22,
+        "plazo_entrega": null
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "solicitud_id": 2,
+    "proveedor_id": 4,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": null,
+    "lineas": [
+      {
+        "producto_id": 1,
+        "precio_unitario": 14,
+        "plazo_entrega": null
+      },
+      {
+        "producto_id": 2,
+        "precio_unitario": 19,
+        "plazo_entrega": null
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "solicitud_id": 3,
+    "proveedor_id": 2,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": false,
+    "lineas": [
+      {
+        "producto_id": 3,
+        "precio_unitario": 23,
+        "plazo_entrega": 6
+      },
+      {
+        "producto_id": 4,
+        "precio_unitario": 12,
+        "plazo_entrega": 6
+      },
+      {
+        "producto_id": 5,
+        "precio_unitario": 11,
+        "plazo_entrega": 6
+      },
+      {
+        "producto_id": 10,
+        "precio_unitario": 10,
+        "plazo_entrega": 6
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "solicitud_id": 3,
+    "proveedor_id": 3,
+    "fecha": "2026-06-05",
+    "notas": "",
+    "adjudicada": true,
+    "lineas": [
+      {
+        "producto_id": 3,
+        "precio_unitario": 11,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 4,
+        "precio_unitario": 13,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 5,
+        "precio_unitario": 17,
+        "plazo_entrega": 4
+      },
+      {
+        "producto_id": 10,
+        "precio_unitario": 11,
+        "plazo_entrega": 4
+      }
+    ]
   }
 ]
